@@ -5,373 +5,731 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Hub — Multi-Session Claude Code Dashboard</title>
 <meta name="description" content="A Windows-native dashboard for managing multiple Claude Code sessions in parallel with real PTY terminals.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+/* ==========================================================================
+   RESET & TOKENS
+   ========================================================================== */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--text:#e6edf3;--muted:#8b949e;
-  --blue:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#d29922;--border:#30363d;
-  --blue-glow:rgba(88,166,255,.25);--purple-glow:rgba(188,140,255,.2);
-}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
-a{color:var(--blue);text-decoration:none}
-a:hover{text-decoration:underline}
+  /* Color tokens */
+  --bg-primary:#09090b;
+  --bg-secondary:#0f0f12;
+  --bg-tertiary:#16161a;
+  --bg-card:#12121a;
+  --bg-card-hover:#1a1a25;
+  --bg-glass:rgba(15,15,18,.72);
+  --bg-glass-strong:rgba(15,15,18,.88);
 
-/* =========================================================
+  --text-primary:#f0f0f5;
+  --text-secondary:#a0a0b0;
+  --text-muted:#6b6b80;
+
+  --accent-blue:#6c9fff;
+  --accent-blue-dim:#4a7ddd;
+  --accent-purple:#a78bfa;
+  --accent-green:#4ade80;
+  --accent-cyan:#22d3ee;
+  --accent-orange:#f59e0b;
+
+  --border-primary:rgba(255,255,255,.06);
+  --border-hover:rgba(255,255,255,.12);
+  --border-glow:rgba(108,159,255,.25);
+
+  --glow-blue:rgba(108,159,255,.15);
+  --glow-purple:rgba(167,139,250,.12);
+  --glow-green:rgba(74,222,128,.1);
+
+  /* Spacing (8dp) */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-7:28px; --sp-8:32px; --sp-10:40px; --sp-12:48px;
+  --sp-16:64px; --sp-20:80px; --sp-24:96px;
+
+  /* Typography */
+  --font-sans:'Inter',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono','Consolas',monospace;
+  --text-xs:.75rem; --text-sm:.875rem; --text-base:1rem;
+  --text-lg:1.125rem; --text-xl:1.25rem; --text-2xl:1.5rem;
+  --text-3xl:2rem; --text-4xl:2.5rem; --text-5xl:3.25rem;
+
+  /* Radius */
+  --radius-sm:6px; --radius-md:10px; --radius-lg:14px; --radius-xl:20px;
+
+  /* Transitions */
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --ease-smooth:cubic-bezier(.4,0,.2,1);
+}
+
+body{
+  font-family:var(--font-sans);
+  background:var(--bg-primary);
+  color:var(--text-primary);
+  line-height:1.6;
+  font-size:var(--text-base);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent-blue);text-decoration:none;transition:color .2s}
+a:hover{color:var(--accent-cyan)}
+::selection{background:rgba(108,159,255,.3);color:#fff}
+
+/* Focus states */
+:focus-visible{
+  outline:2px solid var(--accent-blue);
+  outline-offset:2px;
+  border-radius:var(--radius-sm);
+}
+
+/* ==========================================================================
+   DOT GRID PATTERN OVERLAY
+   ========================================================================== */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:24px 24px;
+}
+
+/* ==========================================================================
+   GRADIENT MESH BACKGROUND
+   ========================================================================== */
+.mesh-bg{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%,rgba(108,159,255,.06),transparent),
+    radial-gradient(ellipse 60% 50% at 80% 30%,rgba(167,139,250,.05),transparent),
+    radial-gradient(ellipse 70% 60% at 50% 80%,rgba(74,222,128,.03),transparent);
+  animation:mesh-shift 20s ease-in-out infinite alternate;
+}
+@keyframes mesh-shift{
+  0%{filter:hue-rotate(0deg)}
+  100%{filter:hue-rotate(15deg)}
+}
+
+/* ==========================================================================
    LANGUAGE TOGGLE
-========================================================= */
-.lang-toggle{
-  position:fixed;top:20px;right:20px;z-index:200;
-  display:flex;gap:4px;background:rgba(22,27,34,.9);
-  border:1px solid var(--border);border-radius:8px;padding:4px;
-  backdrop-filter:blur(12px);
-  transition:box-shadow .3s;
-}
-.lang-toggle:hover{box-shadow:0 0 0 1px var(--blue)}
-.lang-toggle button{
-  background:none;border:none;color:var(--muted);
-  padding:5px 14px;border-radius:6px;cursor:pointer;
-  font-size:.78rem;font-weight:700;letter-spacing:.05em;
-  transition:background .25s,color .25s,transform .15s;
-}
-.lang-toggle button:hover{color:var(--text)}
-.lang-toggle button.active{
-  background:linear-gradient(135deg,var(--blue),var(--purple));
-  color:#fff;transform:scale(1.05);
-}
+   ========================================================================== */
 .vi{display:none}
 body.lang-vi .en{display:none}
 body.lang-vi .vi{display:revert}
 
-/* =========================================================
-   SCROLL-REVEAL
-========================================================= */
+/* ==========================================================================
+   STICKY NAV
+   ========================================================================== */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:var(--sp-3) var(--sp-6);
+  background:var(--bg-glass-strong);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border-primary);
+  transition:box-shadow .3s,background .3s;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.nav.scrolled{
+  box-shadow:0 4px 30px rgba(0,0,0,.4);
+  background:rgba(9,9,11,.95);
+}
+.nav-brand{
+  display:flex;align-items:center;gap:var(--sp-3);
+  font-weight:800;font-size:var(--text-lg);
+  color:var(--text-primary);
+}
+.nav-brand svg{width:28px;height:28px}
+.nav-links{
+  display:flex;gap:var(--sp-2);align-items:center;
+  list-style:none;
+}
+.nav-links a{
+  padding:var(--sp-2) var(--sp-3);
+  border-radius:var(--radius-sm);
+  color:var(--text-secondary);
+  font-size:var(--text-sm);
+  font-weight:500;
+  transition:color .2s,background .2s;
+}
+.nav-links a:hover{color:var(--text-primary);background:rgba(255,255,255,.05)}
+
+/* Language toggle in nav */
+.lang-toggle{
+  display:flex;gap:2px;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border-primary);
+  border-radius:var(--radius-sm);
+  padding:2px;
+  margin-left:var(--sp-4);
+}
+.lang-toggle button{
+  background:none;border:none;color:var(--text-muted);
+  padding:var(--sp-1) var(--sp-3);border-radius:4px;cursor:pointer;
+  font-size:var(--text-xs);font-weight:700;letter-spacing:.06em;
+  font-family:var(--font-sans);
+  transition:all .25s var(--ease-spring);
+  min-width:36px;min-height:28px;
+}
+.lang-toggle button:hover{color:var(--text-primary)}
+.lang-toggle button.active{
+  background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+  color:#fff;transform:scale(1.05);
+}
+
+/* Mobile nav */
+.nav-hamburger{
+  display:none;background:none;border:none;color:var(--text-primary);
+  cursor:pointer;padding:var(--sp-2);min-width:44px;min-height:44px;
+  align-items:center;justify-content:center;
+}
+.nav-hamburger svg{width:24px;height:24px}
+
+@media(max-width:768px){
+  .nav-links{
+    display:none;position:absolute;top:100%;left:0;right:0;
+    flex-direction:column;gap:0;
+    background:var(--bg-glass-strong);
+    backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border-primary);
+    padding:var(--sp-2);
+  }
+  .nav-links.open{display:flex}
+  .nav-links a{padding:var(--sp-3) var(--sp-4);min-height:44px;display:flex;align-items:center}
+  .nav-hamburger{display:flex}
+}
+
+/* ==========================================================================
+   SCROLL REVEAL
+   ========================================================================== */
 .reveal{
   opacity:0;
-  transform:translateY(32px);
-  transition:opacity .65s cubic-bezier(.22,1,.36,1),transform .65s cubic-bezier(.22,1,.36,1);
+  transform:translateY(28px);
+  transition:opacity .7s var(--ease-out),transform .7s var(--ease-out);
 }
 .reveal.visible{opacity:1;transform:translateY(0)}
-.reveal-delay-1{transition-delay:.1s}
-.reveal-delay-2{transition-delay:.2s}
-.reveal-delay-3{transition-delay:.3s}
 
-/* =========================================================
-   HERO
-========================================================= */
-.hero{
-  text-align:center;padding:110px 20px 70px;
-  background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
-  position:relative;overflow:hidden;
+/* ==========================================================================
+   SECTION COMMON
+   ========================================================================== */
+.section{
+  position:relative;z-index:1;
+  max-width:1120px;margin:0 auto;
+  padding:var(--sp-24) var(--sp-6);
+}
+.section-label{
+  display:inline-flex;align-items:center;gap:var(--sp-2);
+  font-size:var(--text-xs);font-weight:700;
+  text-transform:uppercase;letter-spacing:.12em;
+  color:var(--accent-blue);
+  margin-bottom:var(--sp-4);
+}
+.section-label svg{width:16px;height:16px;stroke:var(--accent-blue);stroke-width:2;fill:none}
+.section-title{
+  font-size:var(--text-4xl);font-weight:800;line-height:1.15;
+  margin-bottom:var(--sp-4);
+  background:linear-gradient(135deg,var(--text-primary) 30%,var(--text-secondary));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.section-sub{
+  color:var(--text-secondary);font-size:var(--text-lg);
+  max-width:600px;line-height:1.7;
+  margin-bottom:var(--sp-16);
+}
+.section-center{text-align:center}
+.section-center .section-sub{margin-left:auto;margin-right:auto}
+.divider{
+  height:1px;max-width:1120px;margin:0 auto;
+  background:linear-gradient(90deg,transparent,var(--border-primary) 20%,var(--border-primary) 80%,transparent);
 }
 
-/* Animated gradient orbs */
+/* ==========================================================================
+   HERO
+   ========================================================================== */
+.hero{
+  position:relative;overflow:hidden;
+  padding:160px var(--sp-6) var(--sp-20);
+  text-align:center;
+  min-height:80vh;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* Gradient orbs */
 .hero-orb{
   position:absolute;border-radius:50%;
-  filter:blur(80px);pointer-events:none;
-  animation:orb-drift 12s ease-in-out infinite;
+  filter:blur(100px);pointer-events:none;
 }
 .hero-orb-1{
-  width:600px;height:600px;top:-200px;left:50%;
-  transform:translateX(-50%);
-  background:radial-gradient(circle,rgba(88,166,255,.1) 0%,transparent 70%);
+  width:700px;height:700px;top:-250px;left:50%;transform:translateX(-50%);
+  background:radial-gradient(circle,rgba(108,159,255,.1),transparent 70%);
+  animation:orb1 14s ease-in-out infinite;
 }
 .hero-orb-2{
-  width:400px;height:400px;top:10%;left:10%;
-  background:radial-gradient(circle,rgba(188,140,255,.07) 0%,transparent 70%);
-  animation-delay:-4s;
+  width:500px;height:500px;top:5%;left:8%;
+  background:radial-gradient(circle,rgba(167,139,250,.07),transparent 70%);
+  animation:orb2 18s ease-in-out infinite;
 }
 .hero-orb-3{
-  width:350px;height:350px;top:0;right:5%;
-  background:radial-gradient(circle,rgba(63,185,80,.06) 0%,transparent 70%);
-  animation-delay:-8s;
+  width:400px;height:400px;bottom:10%;right:5%;
+  background:radial-gradient(circle,rgba(74,222,128,.05),transparent 70%);
+  animation:orb3 12s ease-in-out infinite;
 }
-@keyframes orb-drift{
-  0%,100%{transform:translateX(-50%) translateY(0) scale(1)}
-  50%{transform:translateX(-50%) translateY(-20px) scale(1.05)}
-}
-.hero-orb-2{animation:orb-drift2 14s ease-in-out infinite}
-@keyframes orb-drift2{
-  0%,100%{transform:translateY(0) scale(1)}
-  50%{transform:translateY(-30px) scale(1.08)}
-}
-.hero-orb-3{animation:orb-drift3 10s ease-in-out infinite}
-@keyframes orb-drift3{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(25px)}
-}
+@keyframes orb1{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) translateY(-20px) scale(1.06)}}
+@keyframes orb2{0%,100%{transform:scale(1)}50%{transform:translateY(-30px) scale(1.1)}}
+@keyframes orb3{0%,100%{transform:scale(1)}50%{transform:translateY(20px) scale(1.08)}}
 
 /* Particle canvas */
-#hero-canvas{
-  position:absolute;inset:0;pointer-events:none;opacity:.5;
-}
+#hero-canvas{position:absolute;inset:0;pointer-events:none;opacity:.45}
 
-.hero-content{position:relative;z-index:1}
+.hero-content{position:relative;z-index:1;max-width:800px;margin:0 auto}
+
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:var(--sp-2);
+  padding:var(--sp-1) var(--sp-4);
+  border-radius:999px;
+  border:1px solid var(--border-primary);
+  background:rgba(255,255,255,.03);
+  font-size:var(--text-sm);color:var(--text-secondary);
+  margin-bottom:var(--sp-8);
+  backdrop-filter:blur(8px);
+}
+.hero-eyebrow .pulse{
+  width:8px;height:8px;border-radius:50%;background:var(--accent-green);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
 
 .hero h1{
-  font-size:3.6rem;font-weight:800;margin-bottom:16px;
-  background:linear-gradient(135deg,var(--blue) 0%,var(--purple) 50%,#79c0ff 100%);
+  font-size:var(--text-5xl);font-weight:900;line-height:1.1;
+  margin-bottom:var(--sp-6);
+  background:linear-gradient(135deg,#fff 0%,var(--accent-blue) 50%,var(--accent-purple) 100%);
   background-size:200% 200%;
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  animation:gradient-shift 6s ease infinite;
-  display:inline-block;
+  animation:gradient-shift 8s ease infinite;
 }
-@keyframes gradient-shift{
-  0%,100%{background-position:0% 50%}
-  50%{background-position:100% 50%}
-}
+@keyframes gradient-shift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+
 .hero .tagline{
-  font-size:1.1rem;color:var(--muted);max-width:660px;
-  margin:0 auto 32px;line-height:1.7;
+  font-size:var(--text-lg);color:var(--text-secondary);
+  max-width:620px;margin:0 auto var(--sp-10);line-height:1.7;
 }
 .hero .badges{
-  display:flex;gap:8px;justify-content:center;margin-bottom:36px;flex-wrap:wrap;
+  display:flex;gap:var(--sp-2);justify-content:center;
+  margin-bottom:var(--sp-10);flex-wrap:wrap;
 }
-.hero .badges img{height:22px;border-radius:4px;transition:transform .2s,opacity .2s}
+.hero .badges img{
+  height:22px;border-radius:4px;
+  transition:transform .25s var(--ease-spring),opacity .2s;
+}
 .hero .badges img:hover{transform:scale(1.1);opacity:.9}
-.btn-group{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+.btn-group{display:flex;gap:var(--sp-4);justify-content:center;flex-wrap:wrap}
 .btn{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:13px 30px;border-radius:8px;font-size:.95rem;font-weight:600;
-  transition:all .25s;position:relative;overflow:hidden;
+  display:inline-flex;align-items:center;gap:var(--sp-2);
+  padding:var(--sp-3) var(--sp-8);border-radius:var(--radius-md);
+  font-size:var(--text-sm);font-weight:600;font-family:var(--font-sans);
+  cursor:pointer;position:relative;overflow:hidden;
+  transition:all .3s var(--ease-spring);
+  min-height:44px;
 }
 .btn::after{
   content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);
+  background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);
   opacity:0;transition:opacity .25s;
 }
 .btn:hover::after{opacity:1}
 .btn-primary{
-  background:linear-gradient(135deg,var(--blue),#79c0ff);
-  color:#0d1117;border:1px solid transparent;
-  box-shadow:0 0 0 0 var(--blue-glow);
+  background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+  color:#fff;border:1px solid transparent;
+  box-shadow:0 0 0 0 var(--glow-blue);
 }
 .btn-primary:hover{
-  transform:translateY(-2px);text-decoration:none;
-  box-shadow:0 6px 24px var(--blue-glow),0 0 0 1px var(--blue);
+  transform:translateY(-2px) scale(1.02);
+  box-shadow:0 8px 32px var(--glow-blue),0 0 0 1px rgba(108,159,255,.3);
 }
 .btn-outline{
-  background:transparent;border:1px solid var(--border);color:var(--text);
+  background:transparent;border:1px solid var(--border-hover);color:var(--text-primary);
 }
 .btn-outline:hover{
-  border-color:var(--blue);text-decoration:none;transform:translateY(-2px);
-  box-shadow:0 6px 24px rgba(88,166,255,.1);
+  border-color:var(--accent-blue);
+  transform:translateY(-2px);
+  box-shadow:0 8px 32px rgba(108,159,255,.08);
 }
-.gh-icon{width:18px;height:18px;fill:currentColor}
-.dl-icon{width:16px;height:16px;fill:currentColor}
+.btn svg{width:18px;height:18px;flex-shrink:0}
 
-/* =========================================================
-   SECTION DIVIDER
-========================================================= */
-.divider{
-  height:1px;max-width:1060px;margin:0 auto;
-  background:linear-gradient(90deg,transparent,var(--border) 20%,var(--border) 80%,transparent);
-  opacity:.6;
+/* ==========================================================================
+   GALLERY
+   ========================================================================== */
+.gallery{
+  max-width:1120px;margin:0 auto;
+  padding:var(--sp-24) var(--sp-6);
+  position:relative;z-index:1;
 }
-
-/* =========================================================
-   SCREENSHOTS GALLERY
-========================================================= */
-.gallery{max-width:1060px;margin:0 auto;padding:70px 20px 80px}
 .gallery-main{
-  border-radius:14px;overflow:hidden;border:1px solid var(--border);
-  box-shadow:0 12px 60px rgba(0,0,0,.5),0 0 0 1px rgba(88,166,255,.08);
-  background:var(--bg2);margin-bottom:18px;
-  transition:box-shadow .4s;
+  border-radius:var(--radius-lg);overflow:hidden;
+  border:1px solid var(--border-primary);
+  box-shadow:0 16px 80px rgba(0,0,0,.5),0 0 0 1px rgba(108,159,255,.05);
+  background:var(--bg-secondary);margin-bottom:var(--sp-5);
+  transition:box-shadow .4s,border-color .4s;
 }
-.gallery-main:hover{box-shadow:0 16px 70px rgba(0,0,0,.6),0 0 0 1px rgba(88,166,255,.2)}
+.gallery-main:hover{
+  box-shadow:0 20px 90px rgba(0,0,0,.6),0 0 0 1px rgba(108,159,255,.15);
+  border-color:var(--border-hover);
+}
 .gallery-bar{
-  display:flex;align-items:center;gap:8px;padding:11px 18px;
-  background:var(--bg3);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-5);
+  background:var(--bg-tertiary);border-bottom:1px solid var(--border-primary);
 }
-.gallery-bar .dots{display:flex;gap:7px}
-.gallery-bar .dot{width:12px;height:12px;border-radius:50%;transition:transform .2s}
+.gallery-bar .dots{display:flex;gap:6px}
+.gallery-bar .dot{
+  width:12px;height:12px;border-radius:50%;
+  transition:transform .2s var(--ease-spring);
+}
 .gallery-bar:hover .dot{transform:scale(1.15)}
-.gallery-bar .dot.r{background:#ff5f57}
-.gallery-bar .dot.y{background:#febc2e}
-.gallery-bar .dot.g{background:#28c840}
+.gallery-bar .dot.r{background:#ff5f57}.gallery-bar .dot.y{background:#febc2e}.gallery-bar .dot.g{background:#28c840}
 .gallery-bar .url{
-  flex:1;text-align:center;color:var(--muted);font-size:.78rem;
-  font-family:'Consolas','Courier New',monospace;
-  background:var(--bg2);padding:3px 12px;border-radius:5px;
-  border:1px solid var(--border);max-width:240px;margin:0 auto;
+  flex:1;text-align:center;color:var(--text-muted);font-size:var(--text-xs);
+  font-family:var(--font-mono);
+  background:var(--bg-primary);padding:var(--sp-1) var(--sp-3);border-radius:var(--radius-sm);
+  border:1px solid var(--border-primary);max-width:240px;margin:0 auto;
 }
 .gallery-main img{
   width:100%;display:block;cursor:pointer;
   transition:opacity .35s;
 }
 .gallery-main img.loading{opacity:.4}
-.gallery-thumbs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.gallery-thumbs{display:flex;gap:var(--sp-3);justify-content:center;flex-wrap:wrap}
 .gallery-thumbs img{
-  width:160px;height:90px;object-fit:cover;border-radius:9px;
-  border:2px solid var(--border);cursor:pointer;opacity:.55;
-  transition:all .3s;filter:grayscale(.3);
+  width:160px;height:90px;object-fit:cover;border-radius:var(--radius-md);
+  border:2px solid var(--border-primary);cursor:pointer;opacity:.45;
+  transition:all .3s var(--ease-spring);filter:grayscale(.3);
 }
-.gallery-thumbs img:hover{opacity:.85;border-color:var(--blue);filter:grayscale(0);transform:scale(1.04)}
-.gallery-thumbs img.active{opacity:1;border-color:var(--blue);filter:grayscale(0);box-shadow:0 0 0 3px rgba(88,166,255,.3)}
+.gallery-thumbs img:hover{
+  opacity:.85;border-color:var(--accent-blue);filter:grayscale(0);
+  transform:scale(1.05);
+}
+.gallery-thumbs img.active{
+  opacity:1;border-color:var(--accent-blue);filter:grayscale(0);
+  box-shadow:0 0 0 3px var(--glow-blue);
+}
 .gallery-caption{
-  text-align:center;color:var(--muted);font-size:.85rem;
-  margin-top:14px;min-height:22px;
-  transition:opacity .3s;
+  text-align:center;color:var(--text-muted);font-size:var(--text-sm);
+  margin-top:var(--sp-4);min-height:22px;transition:opacity .3s;
 }
 
-/* =========================================================
-   SECTION HEADER
-========================================================= */
-.section-title{
-  text-align:center;font-size:2.2rem;margin-bottom:12px;font-weight:800;
-  background:linear-gradient(135deg,var(--text) 0%,var(--muted) 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+/* ==========================================================================
+   WHY CLAUDE HUB (VALUE PROPS)
+   ========================================================================== */
+.value-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-6);
 }
-.section-sub{text-align:center;color:var(--muted);margin-bottom:54px;font-size:1rem}
+.value-card{
+  background:var(--bg-card);
+  border:1px solid var(--border-primary);
+  border-radius:var(--radius-lg);
+  padding:var(--sp-10) var(--sp-8);
+  text-align:center;
+  position:relative;overflow:hidden;
+  transition:all .4s var(--ease-out);
+}
+.value-card::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:80px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent-blue),transparent);
+  transition:width .4s var(--ease-out);
+}
+.value-card:hover::before{width:160px}
+.value-card:hover{
+  border-color:var(--border-hover);
+  transform:translateY(-4px);
+  box-shadow:0 16px 48px rgba(0,0,0,.3),0 0 24px var(--glow-blue);
+}
+.value-icon{
+  width:56px;height:56px;border-radius:var(--radius-md);
+  background:rgba(108,159,255,.08);
+  border:1px solid rgba(108,159,255,.15);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto var(--sp-6);
+  transition:transform .3s var(--ease-spring),background .3s;
+}
+.value-card:hover .value-icon{
+  transform:scale(1.1);
+  background:rgba(108,159,255,.14);
+}
+.value-icon svg{width:24px;height:24px;stroke:var(--accent-blue);stroke-width:1.75;fill:none}
+.value-card h3{
+  font-size:var(--text-xl);font-weight:700;
+  margin-bottom:var(--sp-3);
+}
+.value-card p{color:var(--text-secondary);font-size:var(--text-sm);line-height:1.7}
 
-/* =========================================================
+@media(max-width:768px){
+  .value-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}
+}
+
+/* ==========================================================================
    FEATURES
-========================================================= */
-.features{max-width:1060px;margin:0 auto;padding:80px 20px 80px}
+   ========================================================================== */
 .feature-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--sp-5);
 }
 .feature-card{
-  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
-  padding:26px;position:relative;overflow:hidden;
-  transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s;
+  background:var(--bg-card);
+  border:1px solid var(--border-primary);
+  border-radius:var(--radius-lg);
+  padding:var(--sp-7);
+  position:relative;overflow:hidden;
+  transition:all .35s var(--ease-out);
 }
+/* Gradient border on hover */
 .feature-card::before{
-  content:'';position:absolute;inset:0;border-radius:12px;
-  background:linear-gradient(135deg,var(--blue),var(--purple));
+  content:'';position:absolute;inset:0;border-radius:var(--radius-lg);
+  background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
   opacity:0;transition:opacity .35s;z-index:0;
-  /* gradient border trick */
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite:xor;
-  mask-composite:exclude;
-  padding:1px;
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;padding:1px;
 }
 .feature-card:hover::before{opacity:1}
 .feature-card:hover{
-  transform:translateY(-5px) scale(1.01);
-  box-shadow:0 12px 40px rgba(0,0,0,.4),0 0 20px var(--blue-glow);
+  transform:translateY(-4px) scale(1.01);
+  box-shadow:0 12px 40px rgba(0,0,0,.35),0 0 20px var(--glow-blue);
   border-color:transparent;
+  background:var(--bg-card-hover);
 }
-.feature-card .icon{
-  font-size:1.7rem;margin-bottom:12px;display:block;
-  transition:transform .3s;position:relative;z-index:1;
+.feature-icon{
+  width:44px;height:44px;border-radius:var(--radius-md);
+  background:rgba(108,159,255,.07);
+  border:1px solid rgba(108,159,255,.12);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:var(--sp-4);
+  position:relative;z-index:1;
+  transition:transform .3s var(--ease-spring),background .3s;
 }
-.feature-card:hover .icon{transform:scale(1.15)}
-.feature-card h3{font-size:1rem;margin-bottom:7px;position:relative;z-index:1}
-.feature-card p{color:var(--muted);font-size:.85rem;line-height:1.6;position:relative;z-index:1}
+.feature-card:hover .feature-icon{transform:scale(1.12);background:rgba(108,159,255,.12)}
+.feature-icon svg{
+  width:20px;height:20px;
+  stroke:var(--accent-blue);stroke-width:1.75;fill:none;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+.feature-card h3{
+  font-size:var(--text-base);font-weight:700;
+  margin-bottom:var(--sp-2);position:relative;z-index:1;
+}
+.feature-card p{
+  color:var(--text-secondary);font-size:var(--text-sm);line-height:1.7;
+  position:relative;z-index:1;
+}
 
-/* =========================================================
+/* ==========================================================================
    QUICK START
-========================================================= */
-.quickstart{max-width:720px;margin:0 auto;padding:80px 20px}
+   ========================================================================== */
+.quickstart-wrap{max-width:680px;margin:0 auto}
 .step{
-  display:flex;gap:18px;margin-bottom:28px;align-items:flex-start;
-  padding:20px;background:var(--bg2);border:1px solid var(--border);
-  border-radius:12px;
-  transition:border-color .3s,box-shadow .3s,transform .3s;
+  display:flex;gap:var(--sp-5);align-items:flex-start;
+  padding:var(--sp-6);
+  background:var(--bg-card);
+  border:1px solid var(--border-primary);
+  border-radius:var(--radius-lg);
+  margin-bottom:var(--sp-4);
+  transition:all .3s var(--ease-out);
 }
 .step:hover{
-  border-color:var(--blue);transform:translateX(4px);
-  box-shadow:0 4px 20px rgba(88,166,255,.1);
+  border-color:var(--accent-blue);
+  transform:translateX(4px);
+  box-shadow:0 4px 24px var(--glow-blue);
 }
 .step-num{
-  flex-shrink:0;width:34px;height:34px;border-radius:50%;
-  background:linear-gradient(135deg,var(--blue),var(--purple));
+  flex-shrink:0;width:40px;height:40px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
   color:#fff;display:flex;align-items:center;justify-content:center;
-  font-weight:800;font-size:.85rem;box-shadow:0 0 12px var(--blue-glow);
+  font-weight:800;font-size:var(--text-sm);
+  box-shadow:0 0 16px var(--glow-blue);
 }
-.step-body h4{font-size:.95rem;margin-bottom:5px;font-weight:700}
-.step-body p{color:var(--muted);font-size:.85rem}
+.step-body h4{font-size:var(--text-base);margin-bottom:var(--sp-2);font-weight:700}
+.step-body p{color:var(--text-secondary);font-size:var(--text-sm)}
 .step-body code{
-  background:var(--bg3);padding:3px 9px;border-radius:5px;
-  font-size:.82rem;color:var(--green);font-family:'Consolas','Courier New',monospace;
-  border:1px solid var(--border);transition:border-color .2s;
+  background:var(--bg-tertiary);padding:var(--sp-1) var(--sp-3);
+  border-radius:var(--radius-sm);font-size:var(--text-xs);
+  color:var(--accent-green);font-family:var(--font-mono);
+  border:1px solid var(--border-primary);
+  transition:border-color .2s;
 }
-.step:hover .step-body code{border-color:rgba(63,185,80,.4)}
+.step:hover code{border-color:rgba(74,222,128,.3)}
 
-/* =========================================================
+/* ==========================================================================
+   TECH STACK
+   ========================================================================== */
+.tech-grid{
+  display:flex;gap:var(--sp-6);justify-content:center;flex-wrap:wrap;
+}
+.tech-item{
+  display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);
+  padding:var(--sp-8) var(--sp-10);
+  background:var(--bg-card);
+  border:1px solid var(--border-primary);
+  border-radius:var(--radius-lg);
+  transition:all .3s var(--ease-spring);
+  min-width:140px;
+}
+.tech-item:hover{
+  border-color:var(--border-hover);
+  transform:translateY(-4px);
+  box-shadow:0 8px 32px rgba(0,0,0,.3);
+}
+.tech-icon{
+  width:48px;height:48px;display:flex;align-items:center;justify-content:center;
+  border-radius:var(--radius-md);
+  background:rgba(255,255,255,.04);
+  transition:transform .3s var(--ease-spring);
+}
+.tech-item:hover .tech-icon{transform:scale(1.12)}
+.tech-icon svg{width:28px;height:28px}
+.tech-item span{
+  font-size:var(--text-sm);font-weight:600;color:var(--text-secondary);
+}
+
+/* ==========================================================================
    ARCHITECTURE
-========================================================= */
-.arch{max-width:720px;margin:0 auto;padding:40px 20px 80px}
+   ========================================================================== */
+.arch-wrap{max-width:680px;margin:0 auto}
 .arch-box{
-  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
-  padding:28px 32px;font-family:'Consolas','Courier New',monospace;font-size:.82rem;
-  line-height:1.8;color:var(--muted);overflow-x:auto;white-space:pre;
+  background:var(--bg-card);border:1px solid var(--border-primary);
+  border-radius:var(--radius-lg);
+  padding:var(--sp-8);
+  font-family:var(--font-mono);font-size:var(--text-sm);
+  line-height:1.9;color:var(--text-muted);
+  overflow-x:auto;white-space:pre;
   box-shadow:0 4px 30px rgba(0,0,0,.3);
   transition:border-color .3s,box-shadow .3s;
 }
-.arch-box:hover{border-color:rgba(88,166,255,.3);box-shadow:0 8px 40px rgba(0,0,0,.4)}
-.arch-box .b{color:var(--blue)}.arch-box .g{color:var(--green)}.arch-box .p{color:var(--purple)}
+.arch-box:hover{
+  border-color:rgba(108,159,255,.2);
+  box-shadow:0 8px 40px rgba(0,0,0,.4);
+}
+.arch-box .b{color:var(--accent-blue)}
+.arch-box .g{color:var(--accent-green)}
+.arch-box .p{color:var(--accent-purple)}
 
-/* =========================================================
+/* ==========================================================================
    FOOTER
-========================================================= */
+   ========================================================================== */
 .footer{
-  text-align:center;padding:40px 20px;border-top:1px solid var(--border);
-  color:var(--muted);font-size:.85rem;position:relative;
+  text-align:center;padding:var(--sp-12) var(--sp-6);
+  border-top:1px solid var(--border-primary);
+  color:var(--text-muted);font-size:var(--text-sm);
+  position:relative;z-index:1;
 }
 .footer::before{
   content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
   width:200px;height:1px;
-  background:linear-gradient(90deg,transparent,var(--blue),transparent);
+  background:linear-gradient(90deg,transparent,var(--accent-blue),transparent);
 }
+.footer a{color:var(--text-secondary)}
+.footer a:hover{color:var(--accent-blue)}
 
-/* =========================================================
+/* ==========================================================================
    SCROLL-TO-TOP
-========================================================= */
+   ========================================================================== */
 .scroll-top{
-  position:fixed;bottom:28px;right:28px;z-index:200;
-  width:42px;height:42px;border-radius:50%;
-  background:linear-gradient(135deg,var(--blue),var(--purple));
+  position:fixed;bottom:var(--sp-8);right:var(--sp-8);z-index:200;
+  width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
   border:none;cursor:pointer;color:#fff;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 16px var(--blue-glow);
+  box-shadow:0 4px 20px var(--glow-blue);
   opacity:0;transform:translateY(16px) scale(.85);
-  transition:opacity .35s,transform .35s;
+  transition:opacity .35s,transform .35s var(--ease-spring);
   pointer-events:none;
 }
 .scroll-top.visible{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
-.scroll-top:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 6px 24px var(--blue-glow)}
+.scroll-top:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 8px 28px var(--glow-blue)}
 .scroll-top svg{width:18px;height:18px;fill:currentColor}
 
-/* =========================================================
+/* ==========================================================================
    RESPONSIVE
-========================================================= */
+   ========================================================================== */
 @media(max-width:640px){
-  .hero h1{font-size:2.4rem}
-  .hero .tagline{font-size:.95rem}
-  .btn{padding:11px 22px;font-size:.88rem}
+  .hero{padding:120px var(--sp-4) var(--sp-16);min-height:auto}
+  .hero h1{font-size:var(--text-3xl)}
+  .hero .tagline{font-size:var(--text-base)}
+  .btn{padding:var(--sp-3) var(--sp-6);font-size:var(--text-sm)}
   .feature-grid{grid-template-columns:1fr}
   .gallery-thumbs img{width:100px;height:56px}
-  .section-title{font-size:1.8rem}
+  .section-title{font-size:var(--text-3xl)}
+  .section{padding:var(--sp-16) var(--sp-4)}
+  .tech-grid{gap:var(--sp-3)}
+  .tech-item{padding:var(--sp-5) var(--sp-6);min-width:110px}
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+   ========================================================================== */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+  .reveal{opacity:1;transform:none}
 }
 </style>
 </head>
 <body>
 
-<!-- Language toggle -->
-<div class="lang-toggle">
-  <button class="active" onclick="setLang('en')">EN</button>
-  <button onclick="setLang('vi')">VI</button>
-</div>
+<!-- Gradient mesh background -->
+<div class="mesh-bg"></div>
+
+<!-- Sticky Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-brand">
+    <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="24" height="20" rx="3"/>
+      <line x1="2" y1="10" x2="26" y2="10"/>
+      <line x1="10" y1="10" x2="10" y2="24"/>
+      <circle cx="6" cy="7" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="9.5" cy="7" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="13" cy="7" r="1" fill="currentColor" stroke="none"/>
+    </svg>
+    Claude Hub
+  </div>
+  <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <ul class="nav-links" id="nav-links">
+    <li><a href="#screenshots"><span class="en">Screenshots</span><span class="vi">Ảnh chụp</span></a></li>
+    <li><a href="#why"><span class="en">Why</span><span class="vi">Tại sao</span></a></li>
+    <li><a href="#features"><span class="en">Features</span><span class="vi">Tính năng</span></a></li>
+    <li><a href="#quickstart"><span class="en">Quick Start</span><span class="vi">Bắt đầu</span></a></li>
+    <li><a href="#techstack"><span class="en">Tech Stack</span><span class="vi">Công nghệ</span></a></li>
+    <li><a href="#architecture"><span class="en">Architecture</span><span class="vi">Kiến trúc</span></a></li>
+    <li>
+      <div class="lang-toggle">
+        <button class="active" onclick="setLang('en')">EN</button>
+        <button onclick="setLang('vi')">VI</button>
+      </div>
+    </li>
+  </ul>
+</nav>
 
 <!-- Scroll to top -->
 <button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
   <svg viewBox="0 0 16 16"><path d="M3.22 9.78a.75.75 0 001.06 0L8 6.06l3.72 3.72a.75.75 0 101.06-1.06l-4.25-4.25a.75.75 0 00-1.06 0L3.22 8.72a.75.75 0 000 1.06z"/></svg>
 </button>
 
-<!-- Hero -->
-<section class="hero">
+<!-- ================================================================
+     1. HERO
+     ================================================================ -->
+<section class="hero" id="hero">
   <canvas id="hero-canvas"></canvas>
   <div class="hero-orb hero-orb-1"></div>
   <div class="hero-orb hero-orb-2"></div>
   <div class="hero-orb hero-orb-3"></div>
   <div class="hero-content reveal">
+    <div class="hero-eyebrow">
+      <span class="pulse"></span>
+      <span class="en">Open Source &middot; Windows Native</span>
+      <span class="vi">M&#227; ngu&#7891;n m&#7903; &middot; Windows Native</span>
+    </div>
     <h1>Claude Hub</h1>
     <p class="tagline en">A Windows-native dashboard for managing multiple Claude Code sessions in parallel. Real PTY terminals piped to xterm.js &mdash; the actual interactive TUI, not a fake chat wrapper.</p>
-    <p class="tagline vi">Dashboard Windows-native cho phép quản lý nhiều phiên Claude Code song song. Terminal PTY thực, pipe qua xterm.js &mdash; TUI tương tác thật, không phải chat giả.</p>
+    <p class="tagline vi">Dashboard Windows-native cho ph&#233;p qu&#7843;n l&#253; nhi&#7873;u phi&#234;n Claude Code song song. Terminal PTY th&#7921;c, pipe qua xterm.js &mdash; TUI t&#432;&#417;ng t&#225;c th&#7853;t, kh&#244;ng ph&#7843;i chat gi&#7843;.</p>
     <div class="badges">
       <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node >= 18">
       <img src="https://img.shields.io/badge/platform-Windows-blue" alt="Windows">
@@ -380,12 +738,12 @@ body.lang-vi .vi{display:revert}
     </div>
     <div class="btn-group">
       <a href="https://github.com/andyluu98/claude-hub" class="btn btn-primary">
-        <svg class="gh-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span class="en">View on GitHub</span><span class="vi">Xem trên GitHub</span>
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="en">View on GitHub</span><span class="vi">Xem tr&#234;n GitHub</span>
       </a>
       <a href="https://github.com/andyluu98/claude-hub/archive/refs/heads/main.zip" class="btn btn-outline">
-        <svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2.75 14A1.75 1.75 0 011 12.25v-2.5a.75.75 0 011.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 00.25-.25v-2.5a.75.75 0 011.5 0v2.5A1.75 1.75 0 0113.25 14H2.75z"/><path d="M7.25 7.689V2a.75.75 0 011.5 0v5.689l1.97-1.969a.749.749 0 111.06 1.06l-3.25 3.25a.749.749 0 01-1.06 0L4.22 6.78a.749.749 0 111.06-1.06l1.97 1.969z"/></svg>
-        <span class="en">Download ZIP</span><span class="vi">Tải ZIP</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span class="en">Download ZIP</span><span class="vi">T&#7843;i ZIP</span>
       </a>
     </div>
   </div>
@@ -393,8 +751,24 @@ body.lang-vi .vi{display:revert}
 
 <div class="divider"></div>
 
-<!-- Screenshot Gallery -->
-<section class="gallery" id="gallery">
+<!-- ================================================================
+     2. SCREENSHOTS GALLERY
+     ================================================================ -->
+<section class="gallery" id="screenshots">
+  <div class="section-center reveal">
+    <div class="section-label">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <span class="en">Preview</span><span class="vi">Xem tr&#432;&#7899;c</span>
+    </div>
+    <h2 class="section-title">
+      <span class="en">See It in Action</span>
+      <span class="vi">Xem Ho&#7841;t &#272;&#7897;ng Th&#7921;c T&#7871;</span>
+    </h2>
+    <p class="section-sub">
+      <span class="en">Multiple Claude Code sessions running side by side with real terminal rendering</span>
+      <span class="vi">Nhi&#7873;u phi&#234;n Claude Code ch&#7841;y song song v&#7899;i terminal th&#7853;t</span>
+    </p>
+  </div>
   <div class="gallery-main reveal">
     <div class="gallery-bar">
       <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
@@ -402,26 +776,26 @@ body.lang-vi .vi{display:revert}
     </div>
     <img id="gallery-img" src="screenshot-multi-sessions.png" alt="Claude Hub Dashboard">
   </div>
-  <div class="gallery-thumbs reveal reveal-delay-1">
+  <div class="gallery-thumbs reveal">
     <img src="screenshot-multi-sessions.png" alt="Multi sessions" class="active"
       data-caption-en="Multi-session tile layout with 7 parallel Claude agents"
-      data-caption-vi="Bố cục tile nhiều session với 7 agent Claude chạy song song"
+      data-caption-vi="B&#7889; c&#7909;c tile nhi&#7873;u session v&#7899;i 7 agent Claude ch&#7841;y song song"
       onclick="showImg(this)">
     <img src="screenshot-overseer.png" alt="Overseer"
       data-caption-en="Overseer mode monitoring all sessions at once"
-      data-caption-vi="Chế độ Overseer giám sát tất cả session cùng lúc"
+      data-caption-vi="Ch&#7871; &#273;&#7897; Overseer gi&#225;m s&#225;t t&#7845;t c&#7843; session c&#249;ng l&#250;c"
       onclick="showImg(this)">
     <img src="screenshot-single-session.png" alt="Single session"
       data-caption-en="Single session with sidebar file explorer"
-      data-caption-vi="Session đơn với thanh file explorer bên cạnh"
+      data-caption-vi="Session &#273;&#417;n v&#7899;i thanh file explorer b&#234;n c&#7841;nh"
       onclick="showImg(this)">
     <img src="screenshot-folder-picker.png" alt="Folder picker"
       data-caption-en="Working directory picker with drives, bookmarks, and recent paths"
-      data-caption-vi="Chọn thư mục làm việc với ổ đĩa, bookmark, và đường dẫn gần đây"
+      data-caption-vi="Ch&#7885;n th&#432; m&#7909;c l&#224;m vi&#7879;c v&#7899;i &#7893; &#273;&#297;a, bookmark, v&#224; &#273;&#432;&#7901;ng d&#7851;n g&#7847;n &#273;&#226;y"
       onclick="showImg(this)">
     <img src="screenshot-terminal-detail.png" alt="Terminal detail"
       data-caption-en="Terminal detail view with Claude Code interactive TUI"
-      data-caption-vi="Chi tiết terminal với giao diện TUI tương tác của Claude Code"
+      data-caption-vi="Chi ti&#7871;t terminal v&#7899;i giao di&#7879;n TUI t&#432;&#417;ng t&#225;c c&#7911;a Claude Code"
       onclick="showImg(this)">
   </div>
   <div class="gallery-caption" id="gallery-caption">Multi-session tile layout with 7 parallel Claude agents</div>
@@ -429,96 +803,180 @@ body.lang-vi .vi{display:revert}
 
 <div class="divider"></div>
 
-<!-- Features -->
-<section class="features">
-  <h2 class="section-title en reveal">Features</h2>
-  <h2 class="section-title vi reveal">Tính Năng</h2>
-  <p class="section-sub en reveal reveal-delay-1">Everything you need to run multiple Claude Code agents side by side</p>
-  <p class="section-sub vi reveal reveal-delay-1">Mọi thứ bạn cần để chạy nhiều agent Claude Code cùng lúc</p>
+<!-- ================================================================
+     3. WHY CLAUDE HUB
+     ================================================================ -->
+<section class="section section-center" id="why">
+  <div class="reveal">
+    <div class="section-label">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="en">Why Claude Hub</span><span class="vi">T&#7841;i Sao Ch&#7885;n Claude Hub</span>
+    </div>
+    <h2 class="section-title">
+      <span class="en">Built for Power Users</span>
+      <span class="vi">D&#224;nh Cho Ng&#432;&#7901;i D&#249;ng Chuy&#234;n Nghi&#7879;p</span>
+    </h2>
+    <p class="section-sub">
+      <span class="en">Not just another wrapper. Claude Hub gives you real terminal power multiplied.</span>
+      <span class="vi">Kh&#244;ng ch&#7881; l&#224; m&#7897;t wrapper kh&#225;c. Claude Hub mang l&#7841;i s&#7913;c m&#7841;nh terminal th&#7853;t s&#7921;.</span>
+    </p>
+  </div>
+  <div class="value-grid">
+    <div class="value-card reveal">
+      <div class="value-icon">
+        <!-- Terminal icon -->
+        <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      </div>
+      <h3><span class="en">Real Terminals</span><span class="vi">Terminal Th&#7853;t</span></h3>
+      <p><span class="en">Each session runs a real claude.exe via node-pty. Full color rendering, interactive prompts, and genuine TUI &mdash; not simulated output.</span><span class="vi">M&#7895;i session ch&#7841;y claude.exe th&#7853;t qua node-pty. Render m&#224;u &#273;&#7847;y &#273;&#7911;, prompt t&#432;&#417;ng t&#225;c, v&#224; TUI nguy&#234;n b&#7843;n &mdash; kh&#244;ng gi&#7843; l&#7853;p.</span></p>
+    </div>
+    <div class="value-card reveal">
+      <div class="value-icon">
+        <!-- Layout grid icon -->
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </div>
+      <h3><span class="en">Multi-Session</span><span class="vi">&#272;a Phi&#234;n</span></h3>
+      <p><span class="en">Run 7+ Claude Code agents simultaneously. Tile, cascade, or focus layouts. Drag, resize, and organize your sessions freely.</span><span class="vi">Ch&#7841;y 7+ agent Claude Code &#273;&#7891;ng th&#7901;i. B&#7889; c&#7909;c tile, cascade, ho&#7863;c focus. K&#233;o, resize, t&#7893; ch&#7913;c session t&#7921; do.</span></p>
+    </div>
+    <div class="value-card reveal">
+      <div class="value-icon">
+        <!-- Windows icon -->
+        <svg viewBox="0 0 24 24"><path d="M3 5.5L10.5 4.5V11.5H3V5.5Z"/><path d="M11.5 4.3L21 3V11.5H11.5V4.3Z"/><path d="M3 12.5H10.5V19.5L3 18.5V12.5Z"/><path d="M11.5 12.5H21V21L11.5 19.7V12.5Z"/></svg>
+      </div>
+      <h3><span class="en">Windows Native</span><span class="vi">Windows Native</span></h3>
+      <p><span class="en">Built specifically for Windows with ConPTY. No WSL needed, no Docker, no VMs. Just clone, install, and run.</span><span class="vi">X&#226;y d&#7921;ng ri&#234;ng cho Windows v&#7899;i ConPTY. Kh&#244;ng c&#7847;n WSL, Docker, hay VM. Ch&#7881; clone, install, v&#224; ch&#7841;y.</span></p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ================================================================
+     4. FEATURES
+     ================================================================ -->
+<section class="section section-center" id="features">
+  <div class="reveal">
+    <div class="section-label">
+      <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span class="en">Features</span><span class="vi">T&#237;nh N&#259;ng</span>
+    </div>
+    <h2 class="section-title">
+      <span class="en">Everything You Need</span>
+      <span class="vi">M&#7885;i Th&#7913; B&#7841;n C&#7847;n</span>
+    </h2>
+    <p class="section-sub">
+      <span class="en">A complete toolkit for running multiple Claude Code agents side by side</span>
+      <span class="vi">B&#7897; c&#244;ng c&#7909; ho&#224;n ch&#7881;nh &#273;&#7875; ch&#7841;y nhi&#7873;u agent Claude Code c&#249;ng l&#250;c</span>
+    </p>
+  </div>
   <div class="feature-grid">
 
+    <!-- 1. Real PTY Terminals -->
     <div class="feature-card reveal">
-      <span class="icon">&#x1F5A5;</span>
-      <h3 class="en">Real PTY Terminals</h3><h3 class="vi">Terminal PTY Thực</h3>
-      <p class="en">Each session spawns a real claude.exe process via node-pty. Raw bytes pipe through WebSocket to xterm.js &mdash; full TUI rendering with colors, prompts, and interactive input.</p>
-      <p class="vi">Mỗi session khởi tạo process claude.exe thật qua node-pty. Byte thô pipe qua WebSocket tới xterm.js &mdash; render TUI đầy đủ với màu sắc, prompt, và input tương tác.</p>
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      </div>
+      <h3><span class="en">Real PTY Terminals</span><span class="vi">Terminal PTY Th&#7921;c</span></h3>
+      <p><span class="en">Each session spawns a real claude.exe process via node-pty. Raw bytes pipe through WebSocket to xterm.js &mdash; full TUI rendering with colors, prompts, and interactive input.</span><span class="vi">M&#7895;i session kh&#7903;i t&#7841;o process claude.exe th&#7853;t qua node-pty. Byte th&#244; pipe qua WebSocket t&#7899;i xterm.js &mdash; render TUI &#273;&#7847;y &#273;&#7911; v&#7899;i m&#224;u s&#7855;c, prompt, v&#224; input t&#432;&#417;ng t&#225;c.</span></p>
     </div>
 
-    <div class="feature-card reveal reveal-delay-1">
-      <span class="icon">&#x1F4CB;</span>
-      <h3 class="en">Kanban Lanes (Active / Pending / Done)</h3><h3 class="vi">Kanban Lane (Active / Pending / Done)</h3>
-      <p class="en">Organize sessions into three lanes. Move sessions between Active, Pending, and Done as your workflow progresses. Each lane shows session count.</p>
-      <p class="vi">Tổ chức session thành 3 lane. Chuyển session giữa Active, Pending, Done theo tiến độ công việc. Mỗi lane hiển thị số lượng session.</p>
-    </div>
-
-    <div class="feature-card reveal reveal-delay-2">
-      <span class="icon">&#x1F4C2;</span>
-      <h3 class="en">Filesystem Browser</h3><h3 class="vi">Trình Duyệt File</h3>
-      <p class="en">Built-in sidebar file explorer with navigation (back/forward/home), breadcrumb path bar, bookmarks, and recent paths. Create, rename, duplicate, delete files and folders via right-click context menu.</p>
-      <p class="vi">File explorer tích hợp trong sidebar với điều hướng (back/forward/home), thanh breadcrumb, bookmark, và đường dẫn gần đây. Tạo, đổi tên, nhân bản, xóa file/folder qua menu chuột phải.</p>
-    </div>
-
+    <!-- 2. Kanban Lanes -->
     <div class="feature-card reveal">
-      <span class="icon">&#x1F4BE;</span>
-      <h3 class="en">Persistent Sessions</h3><h3 class="vi">Session Lưu Trữ</h3>
-      <p class="en">Sessions survive page reloads and server restarts. Terminal scrollback (~50KB per session) is preserved. Resume stopped sessions with one click &mdash; pick up exactly where you left off.</p>
-      <p class="vi">Session tồn tại qua reload trang và restart server. Scrollback terminal (~50KB mỗi session) được lưu lại. Resume session đã dừng chỉ 1 click &mdash; tiếp tục đúng nơi bạn dừng.</p>
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
+      </div>
+      <h3><span class="en">Kanban Lanes (Active / Pending / Done)</span><span class="vi">Kanban Lane (Active / Pending / Done)</span></h3>
+      <p><span class="en">Organize sessions into three lanes. Move sessions between Active, Pending, and Done as your workflow progresses. Each lane shows session count.</span><span class="vi">T&#7893; ch&#7913;c session th&#224;nh 3 lane. Chuy&#7875;n session gi&#7919;a Active, Pending, Done theo ti&#7871;n &#273;&#7897; c&#244;ng vi&#7879;c. M&#7895;i lane hi&#7875;n th&#7883; s&#7889; l&#432;&#7907;ng session.</span></p>
     </div>
 
-    <div class="feature-card reveal reveal-delay-1">
-      <span class="icon">&#x1F4CB;</span>
-      <h3 class="en">Copy &amp; Paste in Terminal</h3><h3 class="vi">Copy &amp; Paste trong Terminal</h3>
-      <p class="en">Ctrl+C copies selected text from terminal (sends SIGINT when no selection). Ctrl+V pastes text or images. Right-click and middle-click also paste. Shift+Enter for newline in Claude CLI.</p>
-      <p class="vi">Ctrl+C copy văn bản đã chọn từ terminal (gửi SIGINT khi không có vùng chọn). Ctrl+V dán văn bản hoặc hình. Chuột phải và chuột giữa cũng dán. Shift+Enter để xuống dòng trong Claude CLI.</p>
-    </div>
-
-    <div class="feature-card reveal reveal-delay-2">
-      <span class="icon">&#x1F4F7;</span>
-      <h3 class="en">Clipboard Image Paste</h3><h3 class="vi">Dán Hình từ Clipboard</h3>
-      <p class="en">Paste images directly from clipboard into the terminal. The image is auto-saved to a temp file and pushed into Claude's input as @filepath &mdash; perfect for sharing screenshots with Claude.</p>
-      <p class="vi">Dán hình trực tiếp từ clipboard vào terminal. Hình được tự động lưu vào file tạm và gửi vào input của Claude dưới dạng @filepath &mdash; hoàn hảo để chia sẻ screenshot với Claude.</p>
-    </div>
-
+    <!-- 3. Filesystem Browser -->
     <div class="feature-card reveal">
-      <span class="icon">&#x1F4CE;</span>
-      <h3 class="en">Drag &amp; Drop Files</h3><h3 class="vi">Kéo &amp; Thả File</h3>
-      <p class="en">Drag files from Windows Explorer (or the sidebar) directly into a terminal pane. File paths are auto-converted to @references and sent to Claude's input.</p>
-      <p class="vi">Kéo file từ Windows Explorer (hoặc sidebar) trực tiếp vào terminal. Đường dẫn file tự động chuyển thành @reference và gửi vào input của Claude.</p>
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="9" y1="14" x2="5" y2="18"/><line x1="9" y1="14" x2="13" y2="18"/></svg>
+      </div>
+      <h3><span class="en">Filesystem Browser</span><span class="vi">Tr&#236;nh Duy&#7879;t File</span></h3>
+      <p><span class="en">Built-in sidebar file explorer with navigation (back/forward/home), breadcrumb path bar, bookmarks, and recent paths. Create, rename, duplicate, delete files and folders via right-click context menu.</span><span class="vi">File explorer t&#237;ch h&#7907;p trong sidebar v&#7899;i &#273;i&#7873;u h&#432;&#7899;ng (back/forward/home), thanh breadcrumb, bookmark, v&#224; &#273;&#432;&#7901;ng d&#7851;n g&#7847;n &#273;&#226;y. T&#7841;o, &#273;&#7893;i t&#234;n, nh&#226;n b&#7843;n, x&#243;a file/folder qua menu chu&#7897;t ph&#7843;i.</span></p>
     </div>
 
-    <div class="feature-card reveal reveal-delay-1">
-      <span class="icon">&#x1F440;</span>
-      <h3 class="en">Overseer Mode</h3><h3 class="vi">Chế Độ Overseer</h3>
-      <p class="en">Monitor all running sessions from a single status panel. See session count, running/stopped status, and overseer rules at a glance. Auto-refreshes every 3 seconds.</p>
-      <p class="vi">Giám sát tất cả session đang chạy từ 1 bảng trạng thái. Xem số lượng session, trạng thái running/stopped, và rule overseer. Tự động cập nhật mỗi 3 giây.</p>
-    </div>
-
-    <div class="feature-card reveal reveal-delay-2">
-      <span class="icon">&#x1F4D0;</span>
-      <h3 class="en">Flexible Layouts</h3><h3 class="vi">Bố Cục Linh Hoạt</h3>
-      <p class="en">Tile, Columns, Rows, Cascade, or Focus mode. Drag pane headers to reposition, resize from corners. Positions are saved to localStorage and restored on reload.</p>
-      <p class="vi">Tile, Columns, Rows, Cascade, hoặc Focus mode. Kéo header để thay đổi vị trí, resize từ góc. Vị trí được lưu vào localStorage và khôi phục khi reload.</p>
-    </div>
-
+    <!-- 4. Persistent Sessions -->
     <div class="feature-card reveal">
-      <span class="icon">&#x26A1;</span>
-      <h3 class="en">Auto-Accept Mode</h3><h3 class="vi">Chế Độ Tự Động Chấp Nhận</h3>
-      <p class="en">Toggle auto-accept per session to run Claude with --dangerously-skip-permissions. Sessions show an AUTO badge when enabled. Use with caution on trusted directories only.</p>
-      <p class="vi">Bật/tắt auto-accept từng session để chạy Claude với --dangerously-skip-permissions. Session hiển thị badge AUTO khi bật. Chỉ dùng trên thư mục tin cậy.</p>
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      </div>
+      <h3><span class="en">Persistent Sessions</span><span class="vi">Session L&#432;u Tr&#7919;</span></h3>
+      <p><span class="en">Sessions survive page reloads and server restarts. Terminal scrollback (~50KB per session) is preserved. Resume stopped sessions with one click &mdash; pick up exactly where you left off.</span><span class="vi">Session t&#7891;n t&#7841;i qua reload trang v&#224; restart server. Scrollback terminal (~50KB m&#7895;i session) &#273;&#432;&#7907;c l&#432;u l&#7841;i. Resume session &#273;&#227; d&#7915;ng ch&#7881; 1 click &mdash; ti&#7871;p t&#7909;c &#273;&#250;ng n&#417;i b&#7841;n d&#7915;ng.</span></p>
     </div>
 
-    <div class="feature-card reveal reveal-delay-1">
-      <span class="icon">&#x2B50;</span>
-      <h3 class="en">Bookmarks &amp; Recent Paths</h3><h3 class="vi">Bookmark &amp; Đường Dẫn Gần Đây</h3>
-      <p class="en">Save frequently used directories as bookmarks for quick access. Recent working directories are automatically tracked and shown in the folder picker.</p>
-      <p class="vi">Lưu các thư mục hay dùng làm bookmark để truy cập nhanh. Các thư mục làm việc gần đây được tự động theo dõi và hiển thị trong folder picker.</p>
+    <!-- 5. Copy & Paste -->
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      </div>
+      <h3><span class="en">Copy &amp; Paste in Terminal</span><span class="vi">Copy &amp; Paste trong Terminal</span></h3>
+      <p><span class="en">Ctrl+C copies selected text from terminal (sends SIGINT when no selection). Ctrl+V pastes text or images. Right-click and middle-click also paste. Shift+Enter for newline in Claude CLI.</span><span class="vi">Ctrl+C copy v&#259;n b&#7843;n &#273;&#227; ch&#7885;n t&#7915; terminal (g&#7917;i SIGINT khi kh&#244;ng c&#243; v&#249;ng ch&#7885;n). Ctrl+V d&#225;n v&#259;n b&#7843;n ho&#7863;c h&#236;nh. Chu&#7897;t ph&#7843;i v&#224; chu&#7897;t gi&#7919;a c&#361;ng d&#225;n. Shift+Enter &#273;&#7875; xu&#7889;ng d&#242;ng trong Claude CLI.</span></p>
     </div>
 
-    <div class="feature-card reveal reveal-delay-2">
-      <span class="icon">&#x1F512;</span>
-      <h3 class="en">Secure by Default</h3><h3 class="vi">Bảo Mật Mặc Định</h3>
-      <p class="en">Binds to 127.0.0.1 only &mdash; no remote access. CSRF protection via Origin/Referer check. Path traversal and shell injection defenses built-in.</p>
-      <p class="vi">Chỉ bind 127.0.0.1 &mdash; không truy cập từ xa. Chống CSRF qua kiểm tra Origin/Referer. Chống path traversal và shell injection tích hợp sẵn.</p>
+    <!-- 6. Clipboard Image Paste -->
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <h3><span class="en">Clipboard Image Paste</span><span class="vi">D&#225;n H&#236;nh t&#7915; Clipboard</span></h3>
+      <p><span class="en">Paste images directly from clipboard into the terminal. The image is auto-saved to a temp file and pushed into Claude's input as @filepath &mdash; perfect for sharing screenshots with Claude.</span><span class="vi">D&#225;n h&#236;nh tr&#7921;c ti&#7871;p t&#7915; clipboard v&#224;o terminal. H&#236;nh &#273;&#432;&#7907;c t&#7921; &#273;&#7897;ng l&#432;u v&#224;o file t&#7841;m v&#224; g&#7917;i v&#224;o input c&#7911;a Claude d&#432;&#7899;i d&#7841;ng @filepath &mdash; ho&#224;n h&#7843;o &#273;&#7875; chia s&#7867; screenshot v&#7899;i Claude.</span></p>
+    </div>
+
+    <!-- 7. Drag & Drop Files -->
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <h3><span class="en">Drag &amp; Drop Files</span><span class="vi">K&#233;o &amp; Th&#7843; File</span></h3>
+      <p><span class="en">Drag files from Windows Explorer (or the sidebar) directly into a terminal pane. File paths are auto-converted to @references and sent to Claude's input.</span><span class="vi">K&#233;o file t&#7915; Windows Explorer (ho&#7863;c sidebar) tr&#7921;c ti&#7871;p v&#224;o terminal. &#272;&#432;&#7901;ng d&#7851;n file t&#7921; &#273;&#7897;ng chuy&#7875;n th&#224;nh @reference v&#224; g&#7917;i v&#224;o input c&#7911;a Claude.</span></p>
+    </div>
+
+    <!-- 8. Overseer Mode -->
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <h3><span class="en">Overseer Mode</span><span class="vi">Ch&#7871; &#272;&#7897; Overseer</span></h3>
+      <p><span class="en">Monitor all running sessions from a single status panel. See session count, running/stopped status, and overseer rules at a glance. Auto-refreshes every 3 seconds.</span><span class="vi">Gi&#225;m s&#225;t t&#7845;t c&#7843; session &#273;ang ch&#7841;y t&#7915; 1 b&#7843;ng tr&#7841;ng th&#225;i. Xem s&#7889; l&#432;&#7907;ng session, tr&#7841;ng th&#225;i running/stopped, v&#224; rule overseer. T&#7921; &#273;&#7897;ng c&#7853;p nh&#7853;t m&#7895;i 3 gi&#226;y.</span></p>
+    </div>
+
+    <!-- 9. Flexible Layouts -->
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      </div>
+      <h3><span class="en">Flexible Layouts</span><span class="vi">B&#7889; C&#7909;c Linh Ho&#7841;t</span></h3>
+      <p><span class="en">Tile, Columns, Rows, Cascade, or Focus mode. Drag pane headers to reposition, resize from corners. Positions are saved to localStorage and restored on reload.</span><span class="vi">Tile, Columns, Rows, Cascade, ho&#7863;c Focus mode. K&#233;o header &#273;&#7875; thay &#273;&#7893;i v&#7883; tr&#237;, resize t&#7915; g&#243;c. V&#7883; tr&#237; &#273;&#432;&#7907;c l&#432;u v&#224;o localStorage v&#224; kh&#244;i ph&#7909;c khi reload.</span></p>
+    </div>
+
+    <!-- 10. Auto-Accept Mode -->
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <h3><span class="en">Auto-Accept Mode</span><span class="vi">Ch&#7871; &#272;&#7897; T&#7921; &#272;&#7897;ng Ch&#7845;p Nh&#7853;n</span></h3>
+      <p><span class="en">Toggle auto-accept per session to run Claude with --dangerously-skip-permissions. Sessions show an AUTO badge when enabled. Use with caution on trusted directories only.</span><span class="vi">B&#7853;t/t&#7855;t auto-accept t&#7915;ng session &#273;&#7875; ch&#7841;y Claude v&#7899;i --dangerously-skip-permissions. Session hi&#7875;n th&#7883; badge AUTO khi b&#7853;t. Ch&#7881; d&#249;ng tr&#234;n th&#432; m&#7909;c tin c&#7853;y.</span></p>
+    </div>
+
+    <!-- 11. Bookmarks & Recent Paths -->
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+      </div>
+      <h3><span class="en">Bookmarks &amp; Recent Paths</span><span class="vi">Bookmark &amp; &#272;&#432;&#7901;ng D&#7851;n G&#7847;n &#272;&#226;y</span></h3>
+      <p><span class="en">Save frequently used directories as bookmarks for quick access. Recent working directories are automatically tracked and shown in the folder picker.</span><span class="vi">L&#432;u c&#225;c th&#432; m&#7909;c hay d&#249;ng l&#224;m bookmark &#273;&#7875; truy c&#7853;p nhanh. C&#225;c th&#432; m&#7909;c l&#224;m vi&#7879;c g&#7847;n &#273;&#226;y &#273;&#432;&#7907;c t&#7921; &#273;&#7897;ng theo d&#245;i v&#224; hi&#7875;n th&#7883; trong folder picker.</span></p>
+    </div>
+
+    <!-- 12. Secure by Default -->
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h3><span class="en">Secure by Default</span><span class="vi">B&#7843;o M&#7853;t M&#7863;c &#272;&#7883;nh</span></h3>
+      <p><span class="en">Binds to 127.0.0.1 only &mdash; no remote access. CSRF protection via Origin/Referer check. Path traversal and shell injection defenses built-in.</span><span class="vi">Ch&#7881; bind 127.0.0.1 &mdash; kh&#244;ng truy c&#7853;p t&#7915; xa. Ch&#7889;ng CSRF qua ki&#7875;m tra Origin/Referer. Ch&#7889;ng path traversal v&#224; shell injection t&#237;ch h&#7907;p s&#7861;n.</span></p>
     </div>
 
   </div>
@@ -526,53 +984,146 @@ body.lang-vi .vi{display:revert}
 
 <div class="divider"></div>
 
-<!-- Quick Start -->
-<section class="quickstart">
-  <h2 class="section-title en reveal">Quick Start</h2>
-  <h2 class="section-title vi reveal">Bắt Đầu Nhanh</h2>
-
-  <div class="step reveal reveal-delay-1">
-    <div class="step-num">1</div>
-    <div class="step-body">
-      <h4 class="en">Clone the repo</h4><h4 class="vi">Clone repo</h4>
-      <p><code>git clone https://github.com/andyluu98/claude-hub.git</code></p>
+<!-- ================================================================
+     5. QUICK START
+     ================================================================ -->
+<section class="section section-center" id="quickstart">
+  <div class="reveal">
+    <div class="section-label">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="en">Quick Start</span><span class="vi">B&#7855;t &#272;&#7847;u Nhanh</span>
     </div>
+    <h2 class="section-title">
+      <span class="en">Up and Running in Minutes</span>
+      <span class="vi">S&#7861;n S&#224;ng Trong V&#224;i Ph&#250;t</span>
+    </h2>
+    <p class="section-sub">
+      <span class="en">Four simple steps to start managing multiple Claude Code sessions</span>
+      <span class="vi">B&#7889;n b&#432;&#7899;c &#273;&#417;n gi&#7843;n &#273;&#7875; b&#7855;t &#273;&#7847;u qu&#7843;n l&#253; nhi&#7873;u phi&#234;n Claude Code</span>
+    </p>
   </div>
-  <div class="step reveal reveal-delay-2">
-    <div class="step-num">2</div>
-    <div class="step-body">
-      <h4 class="en">Install dependencies</h4><h4 class="vi">Cài đặt thư viện</h4>
-      <p><code>cd claude-hub &amp;&amp; npm install</code></p>
-      <p class="en" style="margin-top:6px">Requires Visual Studio Build Tools for node-pty native compilation.</p>
-      <p class="vi" style="margin-top:6px">Cần Visual Studio Build Tools để compile node-pty.</p>
+  <div class="quickstart-wrap">
+    <div class="step reveal">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4><span class="en">Clone the repo</span><span class="vi">Clone repo</span></h4>
+        <p><code>git clone https://github.com/andyluu98/claude-hub.git</code></p>
+      </div>
     </div>
-  </div>
-  <div class="step reveal reveal-delay-3">
-    <div class="step-num">3</div>
-    <div class="step-body">
-      <h4 class="en">Launch</h4><h4 class="vi">Khởi động</h4>
-      <p><code>start.bat</code> <span class="en">or</span><span class="vi">hoặc</span> <code>node server.js</code></p>
-      <p class="en" style="margin-top:6px">Browser auto-opens at <code>http://localhost:8765</code></p>
-      <p class="vi" style="margin-top:6px">Trình duyệt tự động mở tại <code>http://localhost:8765</code></p>
+    <div class="step reveal">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4><span class="en">Install dependencies</span><span class="vi">C&#224;i &#273;&#7863;t th&#432; vi&#7879;n</span></h4>
+        <p><code>cd claude-hub &amp;&amp; npm install</code></p>
+        <p style="margin-top:var(--sp-2)"><span class="en">Requires Visual Studio Build Tools for node-pty native compilation.</span><span class="vi">C&#7847;n Visual Studio Build Tools &#273;&#7875; compile node-pty.</span></p>
+      </div>
     </div>
-  </div>
-  <div class="step reveal reveal-delay-1">
-    <div class="step-num">4</div>
-    <div class="step-body">
-      <h4 class="en">Create sessions</h4><h4 class="vi">Tạo session</h4>
-      <p class="en">Pick a working directory, click <strong>+ New Session</strong>, and start coding with Claude.</p>
-      <p class="vi">Chọn thư mục làm việc, nhấn <strong>+ New Session</strong>, và bắt đầu code với Claude.</p>
+    <div class="step reveal">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4><span class="en">Launch</span><span class="vi">Kh&#7903;i &#273;&#7897;ng</span></h4>
+        <p><code>start.bat</code> <span class="en">or</span><span class="vi">ho&#7863;c</span> <code>node server.js</code></p>
+        <p style="margin-top:var(--sp-2)"><span class="en">Browser auto-opens at <code>http://localhost:8765</code></span><span class="vi">Tr&#236;nh duy&#7879;t t&#7921; &#273;&#7897;ng m&#7903; t&#7841;i <code>http://localhost:8765</code></span></p>
+      </div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4><span class="en">Create sessions</span><span class="vi">T&#7841;o session</span></h4>
+        <p><span class="en">Pick a working directory, click <strong>+ New Session</strong>, and start coding with Claude.</span><span class="vi">Ch&#7885;n th&#432; m&#7909;c l&#224;m vi&#7879;c, nh&#7845;n <strong>+ New Session</strong>, v&#224; b&#7855;t &#273;&#7847;u code v&#7899;i Claude.</span></p>
+      </div>
     </div>
   </div>
 </section>
 
 <div class="divider"></div>
 
-<!-- Architecture -->
-<section class="arch">
-  <h2 class="section-title en reveal">Architecture</h2>
-  <h2 class="section-title vi reveal">Kiến Trúc</h2>
-  <div class="arch-box reveal reveal-delay-1"><span class="b">Browser (xterm.js)</span>
+<!-- ================================================================
+     6. TECH STACK
+     ================================================================ -->
+<section class="section section-center" id="techstack">
+  <div class="reveal">
+    <div class="section-label">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span class="en">Tech Stack</span><span class="vi">C&#244;ng Ngh&#7879;</span>
+    </div>
+    <h2 class="section-title">
+      <span class="en">Built With</span>
+      <span class="vi">X&#226;y D&#7921;ng V&#7899;i</span>
+    </h2>
+    <p class="section-sub">
+      <span class="en">Modern, battle-tested technologies for reliability and performance</span>
+      <span class="vi">C&#244;ng ngh&#7879; hi&#7879;n &#273;&#7841;i, &#273;&#227; &#273;&#432;&#7907;c ki&#7875;m ch&#7913;ng v&#7873; &#273;&#7897; tin c&#7853;y v&#224; hi&#7879;u su&#7845;t</span>
+    </p>
+  </div>
+  <div class="tech-grid reveal">
+    <!-- Node.js -->
+    <div class="tech-item">
+      <div class="tech-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="#4ade80" stroke-width="1.5"/><path d="M12 7v10" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round"/><path d="M7 9.5l5 3 5-3" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span>Node.js</span>
+    </div>
+    <!-- Express -->
+    <div class="tech-item">
+      <div class="tech-icon">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="#a0a0b0" stroke-width="1.5"/><path d="M3 10h18" stroke="#a0a0b0" stroke-width="1.5"/><circle cx="6" cy="8" r=".75" fill="#a0a0b0"/><circle cx="8.5" cy="8" r=".75" fill="#a0a0b0"/></svg>
+      </div>
+      <span>Express</span>
+    </div>
+    <!-- xterm.js -->
+    <div class="tech-item">
+      <div class="tech-icon">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" stroke="#6c9fff" stroke-width="1.5"/><polyline points="6 15 10 11 6 7" stroke="#6c9fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="18" y2="15" stroke="#6c9fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <span>xterm.js</span>
+    </div>
+    <!-- node-pty -->
+    <div class="tech-item">
+      <div class="tech-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M8 9l3 3-3 3" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 15h3" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="4" width="18" height="16" rx="3" stroke="#a78bfa" stroke-width="1.5"/></svg>
+      </div>
+      <span>node-pty</span>
+    </div>
+    <!-- WebSocket -->
+    <div class="tech-item">
+      <div class="tech-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/><path d="M12 20c-2 0-4-3.6-4-8s2-8 4-8 4 3.6 4 8" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="12" x2="20" y2="12" stroke="#22d3ee" stroke-width="1.5"/></svg>
+      </div>
+      <span>WebSocket</span>
+    </div>
+    <!-- ConPTY -->
+    <div class="tech-item">
+      <div class="tech-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 5.5L10.5 4.5V11.5H3V5.5Z" stroke="#f59e0b" stroke-width="1.25" fill="rgba(245,158,11,.1)"/><path d="M11.5 4.3L21 3V11.5H11.5V4.3Z" stroke="#f59e0b" stroke-width="1.25" fill="rgba(245,158,11,.1)"/><path d="M3 12.5H10.5V19.5L3 18.5V12.5Z" stroke="#f59e0b" stroke-width="1.25" fill="rgba(245,158,11,.1)"/><path d="M11.5 12.5H21V21L11.5 19.7V12.5Z" stroke="#f59e0b" stroke-width="1.25" fill="rgba(245,158,11,.1)"/></svg>
+      </div>
+      <span>ConPTY</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ================================================================
+     7. ARCHITECTURE
+     ================================================================ -->
+<section class="section section-center" id="architecture">
+  <div class="reveal">
+    <div class="section-label">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="en">Architecture</span><span class="vi">Ki&#7871;n Tr&#250;c</span>
+    </div>
+    <h2 class="section-title">
+      <span class="en">How It Works</span>
+      <span class="vi">C&#225;ch Ho&#7841;t &#272;&#7897;ng</span>
+    </h2>
+    <p class="section-sub">
+      <span class="en">Simple, direct architecture with no unnecessary abstractions</span>
+      <span class="vi">Ki&#7871;n tr&#250;c &#273;&#417;n gi&#7843;n, tr&#7921;c ti&#7871;p, kh&#244;ng c&#243; abstraction th&#7915;a</span>
+    </p>
+  </div>
+  <div class="arch-wrap">
+    <div class="arch-box reveal"><span class="b">Browser (xterm.js)</span>
     |
     |  WebSocket (raw bytes)
     v
@@ -585,17 +1136,25 @@ body.lang-vi .vi{display:revert}
     |  PTY I/O
     v
 <span class="b">Your codebase</span></div>
+  </div>
 </section>
 
-<!-- Footer -->
+<!-- ================================================================
+     8. FOOTER
+     ================================================================ -->
 <footer class="footer">
-  <p>Built by <a href="https://github.com/andyluu98">Andy Luu</a> &middot; <a href="https://github.com/andyluu98/claude-hub">GitHub</a> &middot; MIT License</p>
+  <p>
+    <span class="en">Built by</span><span class="vi">T&#7841;o b&#7903;i</span>
+    <a href="https://github.com/andyluu98">Andy Luu</a> &middot;
+    <a href="https://github.com/andyluu98/claude-hub">GitHub</a> &middot;
+    MIT License
+  </p>
 </footer>
 
 <script>
-/* =========================================================
+/* ==========================================================================
    LANGUAGE TOGGLE
-========================================================= */
+   ========================================================================== */
 function setLang(lang) {
   document.body.className = lang === 'vi' ? 'lang-vi' : '';
   document.querySelectorAll('.lang-toggle button').forEach(function(b) {
@@ -609,9 +1168,9 @@ function setLang(lang) {
   try { localStorage.setItem('claude-hub-lang', lang); } catch(e) {}
 }
 
-/* =========================================================
+/* ==========================================================================
    GALLERY
-========================================================= */
+   ========================================================================== */
 function showImg(thumb) {
   var mainImg = document.getElementById('gallery-img');
   mainImg.classList.add('loading');
@@ -634,38 +1193,83 @@ function showImg(thumb) {
   }, 200);
 }
 
-/* =========================================================
-   SCROLL REVEAL (IntersectionObserver)
-========================================================= */
+/* ==========================================================================
+   SCROLL REVEAL with stagger
+   ========================================================================== */
 (function() {
   var io = new IntersectionObserver(function(entries) {
     entries.forEach(function(entry) {
       if (entry.isIntersecting) {
+        /* Stagger cards within a grid */
+        var parent = entry.target.parentElement;
+        if (parent && (parent.classList.contains('feature-grid') || parent.classList.contains('value-grid') || parent.classList.contains('tech-grid'))) {
+          var siblings = Array.prototype.slice.call(parent.children);
+          var idx = siblings.indexOf(entry.target);
+          entry.target.style.transitionDelay = (idx * 50) + 'ms';
+        }
         entry.target.classList.add('visible');
         io.unobserve(entry.target);
       }
     });
-  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
   document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
 })();
 
-/* =========================================================
+/* ==========================================================================
    SCROLL-TO-TOP BUTTON
-========================================================= */
+   ========================================================================== */
 (function() {
   var btn = document.getElementById('scroll-top');
   window.addEventListener('scroll', function() {
-    if (window.scrollY > 400) {
-      btn.classList.add('visible');
-    } else {
-      btn.classList.remove('visible');
-    }
+    btn.classList.toggle('visible', window.scrollY > 400);
   }, { passive: true });
 })();
 
-/* =========================================================
+/* ==========================================================================
+   STICKY NAV SCROLL STATE
+   ========================================================================== */
+(function() {
+  var nav = document.getElementById('nav');
+  window.addEventListener('scroll', function() {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  }, { passive: true });
+})();
+
+/* ==========================================================================
+   MOBILE NAV HAMBURGER
+   ========================================================================== */
+(function() {
+  var btn = document.getElementById('nav-hamburger');
+  var links = document.getElementById('nav-links');
+  btn.addEventListener('click', function() {
+    links.classList.toggle('open');
+  });
+  /* Close on link click */
+  links.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', function() {
+      links.classList.remove('open');
+    });
+  });
+})();
+
+/* ==========================================================================
+   SMOOTH SCROLL FOR NAV LINKS
+   ========================================================================== */
+document.querySelectorAll('.nav-links a[href^="#"]').forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    var target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      var navH = document.getElementById('nav').offsetHeight;
+      var top = target.getBoundingClientRect().top + window.scrollY - navH - 16;
+      window.scrollTo({ top: top, behavior: 'smooth' });
+    }
+  });
+});
+
+/* ==========================================================================
    HERO PARTICLE CANVAS
-========================================================= */
+   ========================================================================== */
 (function() {
   var canvas = document.getElementById('hero-canvas');
   var ctx = canvas.getContext('2d');
@@ -683,9 +1287,8 @@ function showImg(thumb) {
     this.r = Math.random() * 1.5 + 0.3;
     this.vx = (Math.random() - 0.5) * 0.3;
     this.vy = (Math.random() - 0.5) * 0.3;
-    this.alpha = Math.random() * 0.5 + 0.1;
-    /* alternate blue / purple */
-    this.color = Math.random() > 0.5 ? '88,166,255' : '188,140,255';
+    this.alpha = Math.random() * 0.4 + 0.1;
+    this.color = Math.random() > 0.5 ? '108,159,255' : '167,139,250';
   }
 
   Particle.prototype.update = function() {
@@ -707,21 +1310,38 @@ function showImg(thumb) {
   function init() {
     resize();
     particles = [];
-    var count = Math.min(80, Math.floor((W * H) / 12000));
+    var count = Math.min(90, Math.floor((W * H) / 11000));
     for (var i = 0; i < count; i++) {
       particles.push(new Particle());
+    }
+  }
+
+  function drawLines() {
+    for (var i = 0; i < particles.length; i++) {
+      for (var j = i + 1; j < particles.length; j++) {
+        var dx = particles[i].x - particles[j].x;
+        var dy = particles[i].y - particles[j].y;
+        var dist = dx * dx + dy * dy;
+        if (dist < 14400) { /* 120px */
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = 'rgba(108,159,255,' + (0.06 * (1 - dist / 14400)) + ')';
+          ctx.stroke();
+        }
+      }
     }
   }
 
   function animate() {
     ctx.clearRect(0, 0, W, H);
     particles.forEach(function(p) { p.update(); p.draw(); });
+    drawLines();
     requestAnimationFrame(animate);
   }
 
   window.addEventListener('resize', function() {
     resize();
-    /* redistribute on resize */
     particles.forEach(function(p) {
       p.x = Math.random() * W;
       p.y = Math.random() * H;
@@ -732,9 +1352,9 @@ function showImg(thumb) {
   animate();
 })();
 
-/* =========================================================
+/* ==========================================================================
    RESTORE LANGUAGE PREFERENCE
-========================================================= */
+   ========================================================================== */
 try {
   var saved = localStorage.getItem('claude-hub-lang');
   if (saved === 'vi') setLang('vi');
