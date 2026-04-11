@@ -2,7 +2,6 @@ node_modules/
 .claude-hub-sessions.json
 .claude/
 plans/
-docs/
 *.log
 claude-hub-release/
 claude-hub-*.zip
