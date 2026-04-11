@@ -7,85 +7,345 @@
 <meta name="description" content="A Windows-native dashboard for managing multiple Claude Code sessions in parallel with real PTY terminals.">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--text:#e6edf3;--muted:#8b949e;--blue:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#d29922;--border:#30363d}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--text:#e6edf3;--muted:#8b949e;
+  --blue:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#d29922;--border:#30363d;
+  --blue-glow:rgba(88,166,255,.25);--purple-glow:rgba(188,140,255,.2);
+}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
 a{color:var(--blue);text-decoration:none}
 a:hover{text-decoration:underline}
 
-/* Language toggle */
-.lang-toggle{position:fixed;top:16px;right:16px;z-index:100;display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px}
-.lang-toggle button{background:none;border:none;color:var(--muted);padding:5px 12px;border-radius:4px;cursor:pointer;font-size:.8rem;font-weight:600}
-.lang-toggle button.active{background:var(--blue);color:#fff}
+/* =========================================================
+   LANGUAGE TOGGLE
+========================================================= */
+.lang-toggle{
+  position:fixed;top:20px;right:20px;z-index:200;
+  display:flex;gap:4px;background:rgba(22,27,34,.9);
+  border:1px solid var(--border);border-radius:8px;padding:4px;
+  backdrop-filter:blur(12px);
+  transition:box-shadow .3s;
+}
+.lang-toggle:hover{box-shadow:0 0 0 1px var(--blue)}
+.lang-toggle button{
+  background:none;border:none;color:var(--muted);
+  padding:5px 14px;border-radius:6px;cursor:pointer;
+  font-size:.78rem;font-weight:700;letter-spacing:.05em;
+  transition:background .25s,color .25s,transform .15s;
+}
+.lang-toggle button:hover{color:var(--text)}
+.lang-toggle button.active{
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:#fff;transform:scale(1.05);
+}
 .vi{display:none}
 body.lang-vi .en{display:none}
 body.lang-vi .vi{display:revert}
 
-/* Hero */
-.hero{text-align:center;padding:80px 20px 50px;background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(88,166,255,.08) 0%,transparent 70%);pointer-events:none}
-.hero h1{font-size:3rem;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero .tagline{font-size:1.1rem;color:var(--muted);max-width:660px;margin:0 auto 28px}
-.hero .badges{display:flex;gap:8px;justify-content:center;margin-bottom:32px;flex-wrap:wrap}
-.hero .badges img{height:22px}
+/* =========================================================
+   SCROLL-REVEAL
+========================================================= */
+.reveal{
+  opacity:0;
+  transform:translateY(32px);
+  transition:opacity .65s cubic-bezier(.22,1,.36,1),transform .65s cubic-bezier(.22,1,.36,1);
+}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+
+/* =========================================================
+   HERO
+========================================================= */
+.hero{
+  text-align:center;padding:110px 20px 70px;
+  background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+  position:relative;overflow:hidden;
+}
+
+/* Animated gradient orbs */
+.hero-orb{
+  position:absolute;border-radius:50%;
+  filter:blur(80px);pointer-events:none;
+  animation:orb-drift 12s ease-in-out infinite;
+}
+.hero-orb-1{
+  width:600px;height:600px;top:-200px;left:50%;
+  transform:translateX(-50%);
+  background:radial-gradient(circle,rgba(88,166,255,.1) 0%,transparent 70%);
+}
+.hero-orb-2{
+  width:400px;height:400px;top:10%;left:10%;
+  background:radial-gradient(circle,rgba(188,140,255,.07) 0%,transparent 70%);
+  animation-delay:-4s;
+}
+.hero-orb-3{
+  width:350px;height:350px;top:0;right:5%;
+  background:radial-gradient(circle,rgba(63,185,80,.06) 0%,transparent 70%);
+  animation-delay:-8s;
+}
+@keyframes orb-drift{
+  0%,100%{transform:translateX(-50%) translateY(0) scale(1)}
+  50%{transform:translateX(-50%) translateY(-20px) scale(1.05)}
+}
+.hero-orb-2{animation:orb-drift2 14s ease-in-out infinite}
+@keyframes orb-drift2{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-30px) scale(1.08)}
+}
+.hero-orb-3{animation:orb-drift3 10s ease-in-out infinite}
+@keyframes orb-drift3{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(25px)}
+}
+
+/* Particle canvas */
+#hero-canvas{
+  position:absolute;inset:0;pointer-events:none;opacity:.5;
+}
+
+.hero-content{position:relative;z-index:1}
+
+.hero h1{
+  font-size:3.6rem;font-weight:800;margin-bottom:16px;
+  background:linear-gradient(135deg,var(--blue) 0%,var(--purple) 50%,#79c0ff 100%);
+  background-size:200% 200%;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:gradient-shift 6s ease infinite;
+  display:inline-block;
+}
+@keyframes gradient-shift{
+  0%,100%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+}
+.hero .tagline{
+  font-size:1.1rem;color:var(--muted);max-width:660px;
+  margin:0 auto 32px;line-height:1.7;
+}
+.hero .badges{
+  display:flex;gap:8px;justify-content:center;margin-bottom:36px;flex-wrap:wrap;
+}
+.hero .badges img{height:22px;border-radius:4px;transition:transform .2s,opacity .2s}
+.hero .badges img:hover{transform:scale(1.1);opacity:.9}
 .btn-group{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:8px;font-size:.95rem;font-weight:600;transition:all .2s}
-.btn-primary{background:var(--blue);color:#fff}
-.btn-primary:hover{background:#79c0ff;text-decoration:none;transform:translateY(-1px);box-shadow:0 4px 20px rgba(88,166,255,.3)}
-.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
-.btn-outline:hover{border-color:var(--blue);text-decoration:none;transform:translateY(-1px)}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:13px 30px;border-radius:8px;font-size:.95rem;font-weight:600;
+  transition:all .25s;position:relative;overflow:hidden;
+}
+.btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);
+  opacity:0;transition:opacity .25s;
+}
+.btn:hover::after{opacity:1}
+.btn-primary{
+  background:linear-gradient(135deg,var(--blue),#79c0ff);
+  color:#0d1117;border:1px solid transparent;
+  box-shadow:0 0 0 0 var(--blue-glow);
+}
+.btn-primary:hover{
+  transform:translateY(-2px);text-decoration:none;
+  box-shadow:0 6px 24px var(--blue-glow),0 0 0 1px var(--blue);
+}
+.btn-outline{
+  background:transparent;border:1px solid var(--border);color:var(--text);
+}
+.btn-outline:hover{
+  border-color:var(--blue);text-decoration:none;transform:translateY(-2px);
+  box-shadow:0 6px 24px rgba(88,166,255,.1);
+}
 .gh-icon{width:18px;height:18px;fill:currentColor}
 .dl-icon{width:16px;height:16px;fill:currentColor}
 
-/* Screenshots gallery */
-.gallery{max-width:1060px;margin:0 auto;padding:0 20px 60px}
-.gallery-main{border-radius:12px;overflow:hidden;border:1px solid var(--border);box-shadow:0 8px 40px rgba(0,0,0,.4);background:var(--bg2);margin-bottom:16px}
-.gallery-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border)}
-.gallery-bar .dots{display:flex;gap:6px}
-.gallery-bar .dot{width:12px;height:12px;border-radius:50%}
-.gallery-bar .dot.r{background:#ff5f57}.gallery-bar .dot.y{background:#febc2e}.gallery-bar .dot.g{background:#28c840}
-.gallery-bar .url{flex:1;text-align:center;color:var(--muted);font-size:.8rem;font-family:monospace}
-.gallery-main img{width:100%;display:block;cursor:pointer;transition:opacity .2s}
+/* =========================================================
+   SECTION DIVIDER
+========================================================= */
+.divider{
+  height:1px;max-width:1060px;margin:0 auto;
+  background:linear-gradient(90deg,transparent,var(--border) 20%,var(--border) 80%,transparent);
+  opacity:.6;
+}
+
+/* =========================================================
+   SCREENSHOTS GALLERY
+========================================================= */
+.gallery{max-width:1060px;margin:0 auto;padding:70px 20px 80px}
+.gallery-main{
+  border-radius:14px;overflow:hidden;border:1px solid var(--border);
+  box-shadow:0 12px 60px rgba(0,0,0,.5),0 0 0 1px rgba(88,166,255,.08);
+  background:var(--bg2);margin-bottom:18px;
+  transition:box-shadow .4s;
+}
+.gallery-main:hover{box-shadow:0 16px 70px rgba(0,0,0,.6),0 0 0 1px rgba(88,166,255,.2)}
+.gallery-bar{
+  display:flex;align-items:center;gap:8px;padding:11px 18px;
+  background:var(--bg3);border-bottom:1px solid var(--border);
+}
+.gallery-bar .dots{display:flex;gap:7px}
+.gallery-bar .dot{width:12px;height:12px;border-radius:50%;transition:transform .2s}
+.gallery-bar:hover .dot{transform:scale(1.15)}
+.gallery-bar .dot.r{background:#ff5f57}
+.gallery-bar .dot.y{background:#febc2e}
+.gallery-bar .dot.g{background:#28c840}
+.gallery-bar .url{
+  flex:1;text-align:center;color:var(--muted);font-size:.78rem;
+  font-family:'Consolas','Courier New',monospace;
+  background:var(--bg2);padding:3px 12px;border-radius:5px;
+  border:1px solid var(--border);max-width:240px;margin:0 auto;
+}
+.gallery-main img{
+  width:100%;display:block;cursor:pointer;
+  transition:opacity .35s;
+}
+.gallery-main img.loading{opacity:.4}
 .gallery-thumbs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.gallery-thumbs img{width:160px;height:90px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer;opacity:.6;transition:all .2s}
-.gallery-thumbs img:hover,.gallery-thumbs img.active{opacity:1;border-color:var(--blue)}
-.gallery-caption{text-align:center;color:var(--muted);font-size:.85rem;margin-top:10px;min-height:20px}
+.gallery-thumbs img{
+  width:160px;height:90px;object-fit:cover;border-radius:9px;
+  border:2px solid var(--border);cursor:pointer;opacity:.55;
+  transition:all .3s;filter:grayscale(.3);
+}
+.gallery-thumbs img:hover{opacity:.85;border-color:var(--blue);filter:grayscale(0);transform:scale(1.04)}
+.gallery-thumbs img.active{opacity:1;border-color:var(--blue);filter:grayscale(0);box-shadow:0 0 0 3px rgba(88,166,255,.3)}
+.gallery-caption{
+  text-align:center;color:var(--muted);font-size:.85rem;
+  margin-top:14px;min-height:22px;
+  transition:opacity .3s;
+}
 
-/* Section */
-.section-title{text-align:center;font-size:2rem;margin-bottom:12px;font-weight:700}
-.section-sub{text-align:center;color:var(--muted);margin-bottom:48px;font-size:1rem}
+/* =========================================================
+   SECTION HEADER
+========================================================= */
+.section-title{
+  text-align:center;font-size:2.2rem;margin-bottom:12px;font-weight:800;
+  background:linear-gradient(135deg,var(--text) 0%,var(--muted) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.section-sub{text-align:center;color:var(--muted);margin-bottom:54px;font-size:1rem}
 
-/* Features */
-.features{max-width:1060px;margin:0 auto;padding:60px 20px}
-.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
-.feature-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:22px;transition:border-color .2s,transform .2s}
-.feature-card:hover{border-color:var(--blue);transform:translateY(-2px)}
-.feature-card .icon{font-size:1.5rem;margin-bottom:8px}
-.feature-card h3{font-size:1rem;margin-bottom:5px}
-.feature-card p{color:var(--muted);font-size:.85rem;line-height:1.5}
+/* =========================================================
+   FEATURES
+========================================================= */
+.features{max-width:1060px;margin:0 auto;padding:80px 20px 80px}
+.feature-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;
+}
+.feature-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:26px;position:relative;overflow:hidden;
+  transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s;
+}
+.feature-card::before{
+  content:'';position:absolute;inset:0;border-radius:12px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  opacity:0;transition:opacity .35s;z-index:0;
+  /* gradient border trick */
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  padding:1px;
+}
+.feature-card:hover::before{opacity:1}
+.feature-card:hover{
+  transform:translateY(-5px) scale(1.01);
+  box-shadow:0 12px 40px rgba(0,0,0,.4),0 0 20px var(--blue-glow);
+  border-color:transparent;
+}
+.feature-card .icon{
+  font-size:1.7rem;margin-bottom:12px;display:block;
+  transition:transform .3s;position:relative;z-index:1;
+}
+.feature-card:hover .icon{transform:scale(1.15)}
+.feature-card h3{font-size:1rem;margin-bottom:7px;position:relative;z-index:1}
+.feature-card p{color:var(--muted);font-size:.85rem;line-height:1.6;position:relative;z-index:1}
 
-/* Quick Start */
-.quickstart{max-width:720px;margin:0 auto;padding:60px 20px}
-.step{display:flex;gap:16px;margin-bottom:22px;align-items:flex-start}
-.step-num{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
-.step-body h4{font-size:.95rem;margin-bottom:3px}
+/* =========================================================
+   QUICK START
+========================================================= */
+.quickstart{max-width:720px;margin:0 auto;padding:80px 20px}
+.step{
+  display:flex;gap:18px;margin-bottom:28px;align-items:flex-start;
+  padding:20px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;
+  transition:border-color .3s,box-shadow .3s,transform .3s;
+}
+.step:hover{
+  border-color:var(--blue);transform:translateX(4px);
+  box-shadow:0 4px 20px rgba(88,166,255,.1);
+}
+.step-num{
+  flex-shrink:0;width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:.85rem;box-shadow:0 0 12px var(--blue-glow);
+}
+.step-body h4{font-size:.95rem;margin-bottom:5px;font-weight:700}
 .step-body p{color:var(--muted);font-size:.85rem}
-.step-body code{background:var(--bg3);padding:2px 8px;border-radius:4px;font-size:.82rem;color:var(--green);font-family:'Consolas','Courier New',monospace}
+.step-body code{
+  background:var(--bg3);padding:3px 9px;border-radius:5px;
+  font-size:.82rem;color:var(--green);font-family:'Consolas','Courier New',monospace;
+  border:1px solid var(--border);transition:border-color .2s;
+}
+.step:hover .step-body code{border-color:rgba(63,185,80,.4)}
 
-/* Architecture */
-.arch{max-width:720px;margin:0 auto;padding:40px 20px 60px}
-.arch-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;font-family:'Consolas','Courier New',monospace;font-size:.82rem;line-height:1.7;color:var(--muted);overflow-x:auto;white-space:pre}
+/* =========================================================
+   ARCHITECTURE
+========================================================= */
+.arch{max-width:720px;margin:0 auto;padding:40px 20px 80px}
+.arch-box{
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:28px 32px;font-family:'Consolas','Courier New',monospace;font-size:.82rem;
+  line-height:1.8;color:var(--muted);overflow-x:auto;white-space:pre;
+  box-shadow:0 4px 30px rgba(0,0,0,.3);
+  transition:border-color .3s,box-shadow .3s;
+}
+.arch-box:hover{border-color:rgba(88,166,255,.3);box-shadow:0 8px 40px rgba(0,0,0,.4)}
 .arch-box .b{color:var(--blue)}.arch-box .g{color:var(--green)}.arch-box .p{color:var(--purple)}
 
-/* Footer */
-.footer{text-align:center;padding:36px 20px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
+/* =========================================================
+   FOOTER
+========================================================= */
+.footer{
+  text-align:center;padding:40px 20px;border-top:1px solid var(--border);
+  color:var(--muted);font-size:.85rem;position:relative;
+}
+.footer::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:200px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--blue),transparent);
+}
 
-/* Responsive */
+/* =========================================================
+   SCROLL-TO-TOP
+========================================================= */
+.scroll-top{
+  position:fixed;bottom:28px;right:28px;z-index:200;
+  width:42px;height:42px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  border:none;cursor:pointer;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px var(--blue-glow);
+  opacity:0;transform:translateY(16px) scale(.85);
+  transition:opacity .35s,transform .35s;
+  pointer-events:none;
+}
+.scroll-top.visible{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.scroll-top:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 6px 24px var(--blue-glow)}
+.scroll-top svg{width:18px;height:18px;fill:currentColor}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
 @media(max-width:640px){
-  .hero h1{font-size:2.2rem}
+  .hero h1{font-size:2.4rem}
   .hero .tagline{font-size:.95rem}
-  .btn{padding:10px 20px;font-size:.85rem}
+  .btn{padding:11px 22px;font-size:.88rem}
   .feature-grid{grid-template-columns:1fr}
   .gallery-thumbs img{width:100px;height:56px}
+  .section-title{font-size:1.8rem}
 }
 </style>
 </head>
@@ -97,188 +357,222 @@ body.lang-vi .vi{display:revert}
   <button onclick="setLang('vi')">VI</button>
 </div>
 
+<!-- Scroll to top -->
+<button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
+  <svg viewBox="0 0 16 16"><path d="M3.22 9.78a.75.75 0 001.06 0L8 6.06l3.72 3.72a.75.75 0 101.06-1.06l-4.25-4.25a.75.75 0 00-1.06 0L3.22 8.72a.75.75 0 000 1.06z"/></svg>
+</button>
+
 <!-- Hero -->
 <section class="hero">
-  <h1>Claude Hub</h1>
-  <p class="tagline en">A Windows-native dashboard for managing multiple Claude Code sessions in parallel. Real PTY terminals piped to xterm.js &mdash; the actual interactive TUI, not a fake chat wrapper.</p>
-  <p class="tagline vi">Dashboard Windows-native cho phep quan ly nhieu phien Claude Code song song. Terminal PTY thuc, pipe qua xterm.js &mdash; TUI tuong tac that, khong phai chat gia.</p>
-  <div class="badges">
-    <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node >= 18">
-    <img src="https://img.shields.io/badge/platform-Windows-blue" alt="Windows">
-    <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
-    <img src="https://img.shields.io/github/stars/andyluu98/claude-hub?style=social" alt="GitHub Stars">
-  </div>
-  <div class="btn-group">
-    <a href="https://github.com/andyluu98/claude-hub" class="btn btn-primary">
-      <svg class="gh-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-      <span class="en">View on GitHub</span><span class="vi">Xem tren GitHub</span>
-    </a>
-    <a href="https://github.com/andyluu98/claude-hub/archive/refs/heads/main.zip" class="btn btn-outline">
-      <svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2.75 14A1.75 1.75 0 011 12.25v-2.5a.75.75 0 011.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 00.25-.25v-2.5a.75.75 0 011.5 0v2.5A1.75 1.75 0 0113.25 14H2.75z"/><path d="M7.25 7.689V2a.75.75 0 011.5 0v5.689l1.97-1.969a.749.749 0 111.06 1.06l-3.25 3.25a.749.749 0 01-1.06 0L4.22 6.78a.749.749 0 111.06-1.06l1.97 1.969z"/></svg>
-      <span class="en">Download ZIP</span><span class="vi">Tai ZIP</span>
-    </a>
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-orb hero-orb-1"></div>
+  <div class="hero-orb hero-orb-2"></div>
+  <div class="hero-orb hero-orb-3"></div>
+  <div class="hero-content reveal">
+    <h1>Claude Hub</h1>
+    <p class="tagline en">A Windows-native dashboard for managing multiple Claude Code sessions in parallel. Real PTY terminals piped to xterm.js &mdash; the actual interactive TUI, not a fake chat wrapper.</p>
+    <p class="tagline vi">Dashboard Windows-native cho phép quản lý nhiều phiên Claude Code song song. Terminal PTY thực, pipe qua xterm.js &mdash; TUI tương tác thật, không phải chat giả.</p>
+    <div class="badges">
+      <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node >= 18">
+      <img src="https://img.shields.io/badge/platform-Windows-blue" alt="Windows">
+      <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
+      <img src="https://img.shields.io/github/stars/andyluu98/claude-hub?style=social" alt="GitHub Stars">
+    </div>
+    <div class="btn-group">
+      <a href="https://github.com/andyluu98/claude-hub" class="btn btn-primary">
+        <svg class="gh-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="en">View on GitHub</span><span class="vi">Xem trên GitHub</span>
+      </a>
+      <a href="https://github.com/andyluu98/claude-hub/archive/refs/heads/main.zip" class="btn btn-outline">
+        <svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2.75 14A1.75 1.75 0 011 12.25v-2.5a.75.75 0 011.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 00.25-.25v-2.5a.75.75 0 011.5 0v2.5A1.75 1.75 0 0113.25 14H2.75z"/><path d="M7.25 7.689V2a.75.75 0 011.5 0v5.689l1.97-1.969a.749.749 0 111.06 1.06l-3.25 3.25a.749.749 0 01-1.06 0L4.22 6.78a.749.749 0 111.06-1.06l1.97 1.969z"/></svg>
+        <span class="en">Download ZIP</span><span class="vi">Tải ZIP</span>
+      </a>
+    </div>
   </div>
 </section>
 
+<div class="divider"></div>
+
 <!-- Screenshot Gallery -->
 <section class="gallery" id="gallery">
-  <div class="gallery-main">
+  <div class="gallery-main reveal">
     <div class="gallery-bar">
       <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
       <div class="url">localhost:8765</div>
     </div>
     <img id="gallery-img" src="screenshot-multi-sessions.png" alt="Claude Hub Dashboard">
   </div>
-  <div class="gallery-thumbs">
-    <img src="screenshot-multi-sessions.png" alt="Multi sessions" class="active" data-caption-en="Multi-session tile layout with 7 parallel Claude agents" data-caption-vi="Bo cuc tile nhieu session voi 7 agent Claude chay song song" onclick="showImg(this)">
-    <img src="screenshot-overseer.png" alt="Overseer" data-caption-en="Overseer mode monitoring all sessions at once" data-caption-vi="Che do Overseer giam sat tat ca session cung luc" onclick="showImg(this)">
-    <img src="screenshot-single-session.png" alt="Single session" data-caption-en="Single session with sidebar file explorer" data-caption-vi="Session don voi thanh file explorer ben canh" onclick="showImg(this)">
-    <img src="screenshot-folder-picker.png" alt="Folder picker" data-caption-en="Working directory picker with drives, bookmarks, and recent paths" data-caption-vi="Chon thu muc lam viec voi o dia, bookmark, va duong dan gan day" onclick="showImg(this)">
-    <img src="screenshot-terminal-detail.png" alt="Terminal detail" data-caption-en="Terminal detail view with Claude Code interactive TUI" data-caption-vi="Chi tiet terminal voi giao dien TUI tuong tac cua Claude Code" onclick="showImg(this)">
+  <div class="gallery-thumbs reveal reveal-delay-1">
+    <img src="screenshot-multi-sessions.png" alt="Multi sessions" class="active"
+      data-caption-en="Multi-session tile layout with 7 parallel Claude agents"
+      data-caption-vi="Bố cục tile nhiều session với 7 agent Claude chạy song song"
+      onclick="showImg(this)">
+    <img src="screenshot-overseer.png" alt="Overseer"
+      data-caption-en="Overseer mode monitoring all sessions at once"
+      data-caption-vi="Chế độ Overseer giám sát tất cả session cùng lúc"
+      onclick="showImg(this)">
+    <img src="screenshot-single-session.png" alt="Single session"
+      data-caption-en="Single session with sidebar file explorer"
+      data-caption-vi="Session đơn với thanh file explorer bên cạnh"
+      onclick="showImg(this)">
+    <img src="screenshot-folder-picker.png" alt="Folder picker"
+      data-caption-en="Working directory picker with drives, bookmarks, and recent paths"
+      data-caption-vi="Chọn thư mục làm việc với ổ đĩa, bookmark, và đường dẫn gần đây"
+      onclick="showImg(this)">
+    <img src="screenshot-terminal-detail.png" alt="Terminal detail"
+      data-caption-en="Terminal detail view with Claude Code interactive TUI"
+      data-caption-vi="Chi tiết terminal với giao diện TUI tương tác của Claude Code"
+      onclick="showImg(this)">
   </div>
   <div class="gallery-caption" id="gallery-caption">Multi-session tile layout with 7 parallel Claude agents</div>
 </section>
 
+<div class="divider"></div>
+
 <!-- Features -->
 <section class="features">
-  <h2 class="section-title en">Features</h2>
-  <h2 class="section-title vi">Tinh nang</h2>
-  <p class="section-sub en">Everything you need to run multiple Claude Code agents side by side</p>
-  <p class="section-sub vi">Moi thu ban can de chay nhieu agent Claude Code cung luc</p>
+  <h2 class="section-title en reveal">Features</h2>
+  <h2 class="section-title vi reveal">Tính Năng</h2>
+  <p class="section-sub en reveal reveal-delay-1">Everything you need to run multiple Claude Code agents side by side</p>
+  <p class="section-sub vi reveal reveal-delay-1">Mọi thứ bạn cần để chạy nhiều agent Claude Code cùng lúc</p>
   <div class="feature-grid">
 
-    <div class="feature-card">
-      <div class="icon">&#x1F5A5;</div>
-      <h3 class="en">Real PTY Terminals</h3><h3 class="vi">Terminal PTY Thuc</h3>
+    <div class="feature-card reveal">
+      <span class="icon">&#x1F5A5;</span>
+      <h3 class="en">Real PTY Terminals</h3><h3 class="vi">Terminal PTY Thực</h3>
       <p class="en">Each session spawns a real claude.exe process via node-pty. Raw bytes pipe through WebSocket to xterm.js &mdash; full TUI rendering with colors, prompts, and interactive input.</p>
-      <p class="vi">Moi session khoi tao process claude.exe that qua node-pty. Byte tho pipe qua WebSocket toi xterm.js &mdash; render TUI day du voi mau sac, prompt, va input tuong tac.</p>
+      <p class="vi">Mỗi session khởi tạo process claude.exe thật qua node-pty. Byte thô pipe qua WebSocket tới xterm.js &mdash; render TUI đầy đủ với màu sắc, prompt, và input tương tác.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F4CB;</div>
+    <div class="feature-card reveal reveal-delay-1">
+      <span class="icon">&#x1F4CB;</span>
       <h3 class="en">Kanban Lanes (Active / Pending / Done)</h3><h3 class="vi">Kanban Lane (Active / Pending / Done)</h3>
       <p class="en">Organize sessions into three lanes. Move sessions between Active, Pending, and Done as your workflow progresses. Each lane shows session count.</p>
-      <p class="vi">To chuc session thanh 3 lane. Chuyen session giua Active, Pending, Done theo tien do cong viec. Moi lane hien so luong session.</p>
+      <p class="vi">Tổ chức session thành 3 lane. Chuyển session giữa Active, Pending, Done theo tiến độ công việc. Mỗi lane hiển thị số lượng session.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F4C2;</div>
-      <h3 class="en">Filesystem Browser</h3><h3 class="vi">Trinh Duyet File</h3>
+    <div class="feature-card reveal reveal-delay-2">
+      <span class="icon">&#x1F4C2;</span>
+      <h3 class="en">Filesystem Browser</h3><h3 class="vi">Trình Duyệt File</h3>
       <p class="en">Built-in sidebar file explorer with navigation (back/forward/home), breadcrumb path bar, bookmarks, and recent paths. Create, rename, duplicate, delete files and folders via right-click context menu.</p>
-      <p class="vi">File explorer tich hop trong sidebar voi dieu huong (back/forward/home), thanh breadcrumb, bookmark, va duong dan gan day. Tao, doi ten, nhan ban, xoa file/folder qua menu chuot phai.</p>
+      <p class="vi">File explorer tích hợp trong sidebar với điều hướng (back/forward/home), thanh breadcrumb, bookmark, và đường dẫn gần đây. Tạo, đổi tên, nhân bản, xóa file/folder qua menu chuột phải.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F4BE;</div>
-      <h3 class="en">Persistent Sessions</h3><h3 class="vi">Session Luu Tru</h3>
+    <div class="feature-card reveal">
+      <span class="icon">&#x1F4BE;</span>
+      <h3 class="en">Persistent Sessions</h3><h3 class="vi">Session Lưu Trữ</h3>
       <p class="en">Sessions survive page reloads and server restarts. Terminal scrollback (~50KB per session) is preserved. Resume stopped sessions with one click &mdash; pick up exactly where you left off.</p>
-      <p class="vi">Session ton tai qua reload trang va restart server. Scrollback terminal (~50KB moi session) duoc luu lai. Resume session da dung chi 1 click &mdash; tiep tuc dung noi ban dung.</p>
+      <p class="vi">Session tồn tại qua reload trang và restart server. Scrollback terminal (~50KB mỗi session) được lưu lại. Resume session đã dừng chỉ 1 click &mdash; tiếp tục đúng nơi bạn dừng.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F4CB;</div>
+    <div class="feature-card reveal reveal-delay-1">
+      <span class="icon">&#x1F4CB;</span>
       <h3 class="en">Copy &amp; Paste in Terminal</h3><h3 class="vi">Copy &amp; Paste trong Terminal</h3>
       <p class="en">Ctrl+C copies selected text from terminal (sends SIGINT when no selection). Ctrl+V pastes text or images. Right-click and middle-click also paste. Shift+Enter for newline in Claude CLI.</p>
-      <p class="vi">Ctrl+C copy van ban da chon tu terminal (gui SIGINT khi khong co vung chon). Ctrl+V dan van ban hoac hinh. Chuot phai va chuot giua cung dan. Shift+Enter de xuong dong trong Claude CLI.</p>
+      <p class="vi">Ctrl+C copy văn bản đã chọn từ terminal (gửi SIGINT khi không có vùng chọn). Ctrl+V dán văn bản hoặc hình. Chuột phải và chuột giữa cũng dán. Shift+Enter để xuống dòng trong Claude CLI.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F4F7;</div>
-      <h3 class="en">Clipboard Image Paste</h3><h3 class="vi">Dan Hinh tu Clipboard</h3>
+    <div class="feature-card reveal reveal-delay-2">
+      <span class="icon">&#x1F4F7;</span>
+      <h3 class="en">Clipboard Image Paste</h3><h3 class="vi">Dán Hình từ Clipboard</h3>
       <p class="en">Paste images directly from clipboard into the terminal. The image is auto-saved to a temp file and pushed into Claude's input as @filepath &mdash; perfect for sharing screenshots with Claude.</p>
-      <p class="vi">Dan hinh truc tiep tu clipboard vao terminal. Hinh duoc tu dong luu vao file tam va gui vao input cua Claude duoi dang @filepath &mdash; hoan hao de chia se screenshot voi Claude.</p>
+      <p class="vi">Dán hình trực tiếp từ clipboard vào terminal. Hình được tự động lưu vào file tạm và gửi vào input của Claude dưới dạng @filepath &mdash; hoàn hảo để chia sẻ screenshot với Claude.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F4CE;</div>
-      <h3 class="en">Drag &amp; Drop Files</h3><h3 class="vi">Keo &amp; Tha File</h3>
+    <div class="feature-card reveal">
+      <span class="icon">&#x1F4CE;</span>
+      <h3 class="en">Drag &amp; Drop Files</h3><h3 class="vi">Kéo &amp; Thả File</h3>
       <p class="en">Drag files from Windows Explorer (or the sidebar) directly into a terminal pane. File paths are auto-converted to @references and sent to Claude's input.</p>
-      <p class="vi">Keo file tu Windows Explorer (hoac sidebar) truc tiep vao terminal. Duong dan file tu dong chuyen thanh @reference va gui vao input cua Claude.</p>
+      <p class="vi">Kéo file từ Windows Explorer (hoặc sidebar) trực tiếp vào terminal. Đường dẫn file tự động chuyển thành @reference và gửi vào input của Claude.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F440;</div>
-      <h3 class="en">Overseer Mode</h3><h3 class="vi">Che Do Overseer</h3>
+    <div class="feature-card reveal reveal-delay-1">
+      <span class="icon">&#x1F440;</span>
+      <h3 class="en">Overseer Mode</h3><h3 class="vi">Chế Độ Overseer</h3>
       <p class="en">Monitor all running sessions from a single status panel. See session count, running/stopped status, and overseer rules at a glance. Auto-refreshes every 3 seconds.</p>
-      <p class="vi">Giam sat tat ca session dang chay tu 1 bang trang thai. Xem so luong session, trang thai running/stopped, va rule overseer. Tu dong cap nhat moi 3 giay.</p>
+      <p class="vi">Giám sát tất cả session đang chạy từ 1 bảng trạng thái. Xem số lượng session, trạng thái running/stopped, và rule overseer. Tự động cập nhật mỗi 3 giây.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F4D0;</div>
-      <h3 class="en">Flexible Layouts</h3><h3 class="vi">Bo Cuc Linh Hoat</h3>
+    <div class="feature-card reveal reveal-delay-2">
+      <span class="icon">&#x1F4D0;</span>
+      <h3 class="en">Flexible Layouts</h3><h3 class="vi">Bố Cục Linh Hoạt</h3>
       <p class="en">Tile, Columns, Rows, Cascade, or Focus mode. Drag pane headers to reposition, resize from corners. Positions are saved to localStorage and restored on reload.</p>
-      <p class="vi">Tile, Columns, Rows, Cascade, hoac Focus mode. Keo header de thay doi vi tri, resize tu goc. Vi tri duoc luu vao localStorage va khoi phuc khi reload.</p>
+      <p class="vi">Tile, Columns, Rows, Cascade, hoặc Focus mode. Kéo header để thay đổi vị trí, resize từ góc. Vị trí được lưu vào localStorage và khôi phục khi reload.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x26A1;</div>
-      <h3 class="en">Auto-Accept Mode</h3><h3 class="vi">Che Do Tu Dong Chap Nhan</h3>
+    <div class="feature-card reveal">
+      <span class="icon">&#x26A1;</span>
+      <h3 class="en">Auto-Accept Mode</h3><h3 class="vi">Chế Độ Tự Động Chấp Nhận</h3>
       <p class="en">Toggle auto-accept per session to run Claude with --dangerously-skip-permissions. Sessions show an AUTO badge when enabled. Use with caution on trusted directories only.</p>
-      <p class="vi">Bat/tat auto-accept tung session de chay Claude voi --dangerously-skip-permissions. Session hien badge AUTO khi bat. Chi dung tren thu muc tin cay.</p>
+      <p class="vi">Bật/tắt auto-accept từng session để chạy Claude với --dangerously-skip-permissions. Session hiển thị badge AUTO khi bật. Chỉ dùng trên thư mục tin cậy.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x2B50;</div>
-      <h3 class="en">Bookmarks &amp; Recent Paths</h3><h3 class="vi">Bookmark &amp; Duong Dan Gan Day</h3>
+    <div class="feature-card reveal reveal-delay-1">
+      <span class="icon">&#x2B50;</span>
+      <h3 class="en">Bookmarks &amp; Recent Paths</h3><h3 class="vi">Bookmark &amp; Đường Dẫn Gần Đây</h3>
       <p class="en">Save frequently used directories as bookmarks for quick access. Recent working directories are automatically tracked and shown in the folder picker.</p>
-      <p class="vi">Luu cac thu muc hay dung lam bookmark de truy cap nhanh. Cac thu muc lam viec gan day duoc tu dong theo doi va hien thi trong folder picker.</p>
+      <p class="vi">Lưu các thư mục hay dùng làm bookmark để truy cập nhanh. Các thư mục làm việc gần đây được tự động theo dõi và hiển thị trong folder picker.</p>
     </div>
 
-    <div class="feature-card">
-      <div class="icon">&#x1F512;</div>
-      <h3 class="en">Secure by Default</h3><h3 class="vi">Bao Mat Mac Dinh</h3>
+    <div class="feature-card reveal reveal-delay-2">
+      <span class="icon">&#x1F512;</span>
+      <h3 class="en">Secure by Default</h3><h3 class="vi">Bảo Mật Mặc Định</h3>
       <p class="en">Binds to 127.0.0.1 only &mdash; no remote access. CSRF protection via Origin/Referer check. Path traversal and shell injection defenses built-in.</p>
-      <p class="vi">Chi bind 127.0.0.1 &mdash; khong truy cap tu xa. Chong CSRF qua kiem tra Origin/Referer. Chong path traversal va shell injection tich hop san.</p>
+      <p class="vi">Chỉ bind 127.0.0.1 &mdash; không truy cập từ xa. Chống CSRF qua kiểm tra Origin/Referer. Chống path traversal và shell injection tích hợp sẵn.</p>
     </div>
 
   </div>
 </section>
 
+<div class="divider"></div>
+
 <!-- Quick Start -->
 <section class="quickstart">
-  <h2 class="section-title en">Quick Start</h2>
-  <h2 class="section-title vi">Bat Dau Nhanh</h2>
+  <h2 class="section-title en reveal">Quick Start</h2>
+  <h2 class="section-title vi reveal">Bắt Đầu Nhanh</h2>
 
-  <div class="step">
+  <div class="step reveal reveal-delay-1">
     <div class="step-num">1</div>
     <div class="step-body">
       <h4 class="en">Clone the repo</h4><h4 class="vi">Clone repo</h4>
       <p><code>git clone https://github.com/andyluu98/claude-hub.git</code></p>
     </div>
   </div>
-  <div class="step">
+  <div class="step reveal reveal-delay-2">
     <div class="step-num">2</div>
     <div class="step-body">
-      <h4 class="en">Install dependencies</h4><h4 class="vi">Cai dat thu vien</h4>
+      <h4 class="en">Install dependencies</h4><h4 class="vi">Cài đặt thư viện</h4>
       <p><code>cd claude-hub &amp;&amp; npm install</code></p>
-      <p class="en" style="margin-top:4px">Requires Visual Studio Build Tools for node-pty native compilation.</p>
-      <p class="vi" style="margin-top:4px">Can Visual Studio Build Tools de compile node-pty.</p>
+      <p class="en" style="margin-top:6px">Requires Visual Studio Build Tools for node-pty native compilation.</p>
+      <p class="vi" style="margin-top:6px">Cần Visual Studio Build Tools để compile node-pty.</p>
     </div>
   </div>
-  <div class="step">
+  <div class="step reveal reveal-delay-3">
     <div class="step-num">3</div>
     <div class="step-body">
-      <h4 class="en">Launch</h4><h4 class="vi">Khoi dong</h4>
-      <p><code>start.bat</code> <span class="en">or</span><span class="vi">hoac</span> <code>node server.js</code></p>
-      <p class="en" style="margin-top:4px">Browser auto-opens at <code>http://localhost:8765</code></p>
-      <p class="vi" style="margin-top:4px">Trinh duyet tu dong mo tai <code>http://localhost:8765</code></p>
+      <h4 class="en">Launch</h4><h4 class="vi">Khởi động</h4>
+      <p><code>start.bat</code> <span class="en">or</span><span class="vi">hoặc</span> <code>node server.js</code></p>
+      <p class="en" style="margin-top:6px">Browser auto-opens at <code>http://localhost:8765</code></p>
+      <p class="vi" style="margin-top:6px">Trình duyệt tự động mở tại <code>http://localhost:8765</code></p>
     </div>
   </div>
-  <div class="step">
+  <div class="step reveal reveal-delay-1">
     <div class="step-num">4</div>
     <div class="step-body">
-      <h4 class="en">Create sessions</h4><h4 class="vi">Tao session</h4>
+      <h4 class="en">Create sessions</h4><h4 class="vi">Tạo session</h4>
       <p class="en">Pick a working directory, click <strong>+ New Session</strong>, and start coding with Claude.</p>
-      <p class="vi">Chon thu muc lam viec, nhan <strong>+ New Session</strong>, va bat dau code voi Claude.</p>
+      <p class="vi">Chọn thư mục làm việc, nhấn <strong>+ New Session</strong>, và bắt đầu code với Claude.</p>
     </div>
   </div>
 </section>
 
+<div class="divider"></div>
+
 <!-- Architecture -->
 <section class="arch">
-  <h2 class="section-title en">Architecture</h2>
-  <h2 class="section-title vi">Kien Truc</h2>
-  <div class="arch-box"><span class="b">Browser (xterm.js)</span>
+  <h2 class="section-title en reveal">Architecture</h2>
+  <h2 class="section-title vi reveal">Kiến Trúc</h2>
+  <div class="arch-box reveal reveal-delay-1"><span class="b">Browser (xterm.js)</span>
     |
     |  WebSocket (raw bytes)
     v
@@ -299,12 +593,14 @@ body.lang-vi .vi{display:revert}
 </footer>
 
 <script>
+/* =========================================================
+   LANGUAGE TOGGLE
+========================================================= */
 function setLang(lang) {
   document.body.className = lang === 'vi' ? 'lang-vi' : '';
   document.querySelectorAll('.lang-toggle button').forEach(function(b) {
     b.className = b.textContent.trim() === lang.toUpperCase() ? 'active' : '';
   });
-  // Update gallery caption
   var active = document.querySelector('.gallery-thumbs img.active');
   if (active) {
     var key = lang === 'vi' ? 'captionVi' : 'captionEn';
@@ -312,15 +608,133 @@ function setLang(lang) {
   }
   try { localStorage.setItem('claude-hub-lang', lang); } catch(e) {}
 }
+
+/* =========================================================
+   GALLERY
+========================================================= */
 function showImg(thumb) {
-  document.getElementById('gallery-img').src = thumb.src;
+  var mainImg = document.getElementById('gallery-img');
+  mainImg.classList.add('loading');
+  var newSrc = thumb.src;
+  var tmpImg = new Image();
+  tmpImg.onload = function() {
+    mainImg.src = newSrc;
+    mainImg.classList.remove('loading');
+  };
+  tmpImg.src = newSrc;
   document.querySelectorAll('.gallery-thumbs img').forEach(function(t) { t.className = ''; });
   thumb.className = 'active';
   var isVi = document.body.classList.contains('lang-vi');
   var key = isVi ? 'captionVi' : 'captionEn';
-  document.getElementById('gallery-caption').textContent = thumb.dataset[key] || '';
+  var caption = document.getElementById('gallery-caption');
+  caption.style.opacity = '0';
+  setTimeout(function() {
+    caption.textContent = thumb.dataset[key] || '';
+    caption.style.opacity = '1';
+  }, 200);
 }
-// Restore language preference
+
+/* =========================================================
+   SCROLL REVEAL (IntersectionObserver)
+========================================================= */
+(function() {
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
+})();
+
+/* =========================================================
+   SCROLL-TO-TOP BUTTON
+========================================================= */
+(function() {
+  var btn = document.getElementById('scroll-top');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 400) {
+      btn.classList.add('visible');
+    } else {
+      btn.classList.remove('visible');
+    }
+  }, { passive: true });
+})();
+
+/* =========================================================
+   HERO PARTICLE CANVAS
+========================================================= */
+(function() {
+  var canvas = document.getElementById('hero-canvas');
+  var ctx = canvas.getContext('2d');
+  var particles = [];
+  var W, H;
+
+  function resize() {
+    W = canvas.width = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+
+  function Particle() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.r = Math.random() * 1.5 + 0.3;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.vy = (Math.random() - 0.5) * 0.3;
+    this.alpha = Math.random() * 0.5 + 0.1;
+    /* alternate blue / purple */
+    this.color = Math.random() > 0.5 ? '88,166,255' : '188,140,255';
+  }
+
+  Particle.prototype.update = function() {
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0) this.x = W;
+    if (this.x > W) this.x = 0;
+    if (this.y < 0) this.y = H;
+    if (this.y > H) this.y = 0;
+  };
+
+  Particle.prototype.draw = function() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(' + this.color + ',' + this.alpha + ')';
+    ctx.fill();
+  };
+
+  function init() {
+    resize();
+    particles = [];
+    var count = Math.min(80, Math.floor((W * H) / 12000));
+    for (var i = 0; i < count; i++) {
+      particles.push(new Particle());
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(function(p) { p.update(); p.draw(); });
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', function() {
+    resize();
+    /* redistribute on resize */
+    particles.forEach(function(p) {
+      p.x = Math.random() * W;
+      p.y = Math.random() * H;
+    });
+  });
+
+  init();
+  animate();
+})();
+
+/* =========================================================
+   RESTORE LANGUAGE PREFERENCE
+========================================================= */
 try {
   var saved = localStorage.getItem('claude-hub-lang');
   if (saved === 'vi') setLang('vi');
