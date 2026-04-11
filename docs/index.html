@@ -149,6 +149,14 @@ body.lang-vi .vi{display:revert}
   font-weight:500;
   transition:color .2s,background .2s;
 }
+.nav-links a{position:relative}
+.nav-links a::after{
+  content:'';position:absolute;bottom:4px;left:50%;
+  width:0;height:2px;border-radius:1px;
+  background:linear-gradient(90deg,var(--accent-blue),var(--accent-purple));
+  transition:width .3s var(--ease-spring),left .3s var(--ease-spring);
+}
+.nav-links a:hover::after,.nav-links a[style*="color"]::after{width:60%;left:20%}
 .nav-links a:hover{color:var(--text-primary);background:rgba(255,255,255,.05)}
 
 /* Language toggle in nav */
@@ -197,14 +205,18 @@ body.lang-vi .vi{display:revert}
 }
 
 /* ==========================================================================
-   SCROLL REVEAL
+   SCROLL REVEAL — multi-direction
    ========================================================================== */
 .reveal{
   opacity:0;
   transform:translateY(28px);
   transition:opacity .7s var(--ease-out),transform .7s var(--ease-out);
 }
-.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal.visible{opacity:1;transform:translateY(0) translateX(0) scale(1)}
+.reveal-left{transform:translateX(-40px)}
+.reveal-right{transform:translateX(40px)}
+.reveal-scale{transform:scale(.88)}
+.reveal-rotate{transform:rotate(-3deg) translateY(20px)}
 
 /* ==========================================================================
    SECTION COMMON
@@ -236,8 +248,10 @@ body.lang-vi .vi{display:revert}
 .section-center{text-align:center}
 .section-center .section-sub{margin-left:auto;margin-right:auto}
 .divider{
-  height:1px;max-width:1120px;margin:0 auto;
-  background:linear-gradient(90deg,transparent,var(--border-primary) 20%,var(--border-primary) 80%,transparent);
+  height:1px;max-width:1120px;margin:0 auto;position:relative;z-index:1;
+  background:linear-gradient(90deg,transparent,rgba(108,159,255,.15) 20%,rgba(167,139,250,.15) 50%,rgba(108,159,255,.15) 80%,transparent);
+  background-size:200% 100%;
+  animation:line-flow 4s linear infinite;
 }
 
 /* ==========================================================================
@@ -278,7 +292,10 @@ body.lang-vi .vi{display:revert}
 /* Particle canvas */
 #hero-canvas{position:absolute;inset:0;pointer-events:none;opacity:.45}
 
-.hero-content{position:relative;z-index:1;max-width:800px;margin:0 auto}
+.hero-content{
+  position:relative;z-index:1;max-width:800px;margin:0 auto;
+  animation:slide-up-fade .8s var(--ease-out) both;
+}
 
 .hero-eyebrow{
   display:inline-flex;align-items:center;gap:var(--sp-2);
@@ -299,17 +316,66 @@ body.lang-vi .vi{display:revert}
 .hero h1{
   font-size:var(--text-5xl);font-weight:900;line-height:1.1;
   margin-bottom:var(--sp-6);
-  background:linear-gradient(135deg,#fff 0%,var(--accent-blue) 50%,var(--accent-purple) 100%);
-  background-size:200% 200%;
+  background:linear-gradient(90deg,#fff 0%,var(--accent-blue) 25%,var(--accent-purple) 50%,var(--accent-cyan) 75%,#fff 100%);
+  background-size:300% 100%;
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  animation:gradient-shift 8s ease infinite;
+  animation:shimmer 6s linear infinite;
+  position:relative;
+}
+/* Typewriter cursor after title */
+.hero h1 .cursor{
+  display:inline-block;width:3px;height:.85em;
+  background:var(--accent-blue);margin-left:4px;
+  vertical-align:text-bottom;
+  animation:blink 1s step-end infinite;
 }
 @keyframes gradient-shift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+
+/* Shimmer sweep on hero title */
+@keyframes shimmer{
+  0%{background-position:-200% 50%}
+  100%{background-position:200% 50%}
+}
+/* Floating animation for icons */
+@keyframes float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-6px)}
+}
+/* Glow pulse for step numbers */
+@keyframes glow-pulse{
+  0%,100%{box-shadow:0 0 16px var(--glow-blue)}
+  50%{box-shadow:0 0 28px var(--glow-blue),0 0 48px rgba(108,159,255,.1)}
+}
+/* Animated gradient line */
+@keyframes line-flow{
+  0%{background-position:-200% 0}
+  100%{background-position:200% 0}
+}
+/* Typewriter cursor blink */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+/* Bounce in */
+@keyframes bounce-in{
+  0%{transform:scale(0);opacity:0}
+  60%{transform:scale(1.15);opacity:1}
+  100%{transform:scale(1)}
+}
+/* Slide up fade */
+@keyframes slide-up-fade{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+/* Rotate shine on tech icons */
+@keyframes icon-shine{
+  0%{transform:rotate(0deg)}
+  100%{transform:rotate(360deg)}
+}
 
 .hero .tagline{
   font-size:var(--text-lg);color:var(--text-secondary);
   max-width:620px;margin:0 auto var(--sp-10);line-height:1.7;
+  animation:slide-up-fade .8s var(--ease-out) .2s both;
 }
+.hero .eyebrow-wrap{animation:slide-up-fade .6s var(--ease-out) both}
 .hero .badges{
   display:flex;gap:var(--sp-2);justify-content:center;
   margin-bottom:var(--sp-10);flex-wrap:wrap;
@@ -339,6 +405,17 @@ body.lang-vi .vi{display:revert}
   background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
   color:#fff;border:1px solid transparent;
   box-shadow:0 0 0 0 var(--glow-blue);
+}
+/* Shine sweep on primary btn */
+.btn-primary::before{
+  content:'';position:absolute;top:0;left:-100%;
+  width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);
+  transition:none;
+}
+.btn-primary:hover::before{
+  left:120%;
+  transition:left .6s ease;
 }
 .btn-primary:hover{
   transform:translateY(-2px) scale(1.02);
@@ -394,6 +471,14 @@ body.lang-vi .vi{display:revert}
   width:100%;display:block;cursor:pointer;
   transition:opacity .35s;
 }
+/* Scan line overlay on gallery */
+.gallery-main::after{
+  content:'';position:absolute;inset:0;top:40px;pointer-events:none;
+  background:linear-gradient(180deg,transparent 0%,rgba(108,159,255,.03) 50%,transparent 100%);
+  background-size:100% 8px;
+  opacity:0;transition:opacity .4s;
+}
+.gallery-main:hover::after{opacity:1}
 .gallery-main img.loading{opacity:.4}
 .gallery-thumbs{display:flex;gap:var(--sp-3);justify-content:center;flex-wrap:wrap}
 .gallery-thumbs img{
@@ -452,6 +537,7 @@ body.lang-vi .vi{display:revert}
 .value-card:hover .value-icon{
   transform:scale(1.1);
   background:rgba(108,159,255,.14);
+  animation:float 2s ease-in-out infinite;
 }
 .value-icon svg{width:24px;height:24px;stroke:var(--accent-blue);stroke-width:1.75;fill:none}
 .value-card h3{
@@ -502,7 +588,10 @@ body.lang-vi .vi{display:revert}
   position:relative;z-index:1;
   transition:transform .3s var(--ease-spring),background .3s;
 }
-.feature-card:hover .feature-icon{transform:scale(1.12);background:rgba(108,159,255,.12)}
+.feature-card:hover .feature-icon{
+  transform:scale(1.12);background:rgba(108,159,255,.12);
+  animation:float 2s ease-in-out infinite;
+}
 .feature-icon svg{
   width:20px;height:20px;
   stroke:var(--accent-blue);stroke-width:1.75;fill:none;
@@ -541,6 +630,7 @@ body.lang-vi .vi{display:revert}
   color:#fff;display:flex;align-items:center;justify-content:center;
   font-weight:800;font-size:var(--text-sm);
   box-shadow:0 0 16px var(--glow-blue);
+  animation:glow-pulse 3s ease-in-out infinite;
 }
 .step-body h4{font-size:var(--text-base);margin-bottom:var(--sp-2);font-weight:700}
 .step-body p{color:var(--text-secondary);font-size:var(--text-sm)}
@@ -579,7 +669,7 @@ body.lang-vi .vi{display:revert}
   background:rgba(255,255,255,.04);
   transition:transform .3s var(--ease-spring);
 }
-.tech-item:hover .tech-icon{transform:scale(1.12)}
+.tech-item:hover .tech-icon{transform:scale(1.12) rotate(10deg);animation:float 2.5s ease-in-out infinite}
 .tech-icon svg{width:28px;height:28px}
 .tech-item span{
   font-size:var(--text-sm);font-weight:600;color:var(--text-secondary);
@@ -727,7 +817,7 @@ body.lang-vi .vi{display:revert}
       <span class="en">Open Source &middot; Windows Native</span>
       <span class="vi">M&#227; ngu&#7891;n m&#7903; &middot; Windows Native</span>
     </div>
-    <h1>Claude Hub</h1>
+    <h1 id="hero-title">Claude Hub<span class="cursor"></span></h1>
     <p class="tagline en">A Windows-native dashboard for managing multiple Claude Code sessions in parallel. Real PTY terminals piped to xterm.js &mdash; the actual interactive TUI, not a fake chat wrapper.</p>
     <p class="tagline vi">Dashboard Windows-native cho ph&#233;p qu&#7843;n l&#253; nhi&#7873;u phi&#234;n Claude Code song song. Terminal PTY th&#7921;c, pipe qua xterm.js &mdash; TUI t&#432;&#417;ng t&#225;c th&#7853;t, kh&#244;ng ph&#7843;i chat gi&#7843;.</p>
     <div class="badges">
@@ -769,7 +859,7 @@ body.lang-vi .vi{display:revert}
       <span class="vi">Nhi&#7873;u phi&#234;n Claude Code ch&#7841;y song song v&#7899;i terminal th&#7853;t</span>
     </p>
   </div>
-  <div class="gallery-main reveal">
+  <div class="gallery-main reveal reveal-scale">
     <div class="gallery-bar">
       <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
       <div class="url">localhost:8765</div>
@@ -822,7 +912,7 @@ body.lang-vi .vi{display:revert}
     </p>
   </div>
   <div class="value-grid">
-    <div class="value-card reveal">
+    <div class="value-card reveal reveal-left">
       <div class="value-icon">
         <!-- Terminal icon -->
         <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
@@ -830,7 +920,7 @@ body.lang-vi .vi{display:revert}
       <h3><span class="en">Real Terminals</span><span class="vi">Terminal Th&#7853;t</span></h3>
       <p><span class="en">Each session runs a real claude.exe via node-pty. Full color rendering, interactive prompts, and genuine TUI &mdash; not simulated output.</span><span class="vi">M&#7895;i session ch&#7841;y claude.exe th&#7853;t qua node-pty. Render m&#224;u &#273;&#7847;y &#273;&#7911;, prompt t&#432;&#417;ng t&#225;c, v&#224; TUI nguy&#234;n b&#7843;n &mdash; kh&#244;ng gi&#7843; l&#7853;p.</span></p>
     </div>
-    <div class="value-card reveal">
+    <div class="value-card reveal reveal-scale">
       <div class="value-icon">
         <!-- Layout grid icon -->
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -838,7 +928,7 @@ body.lang-vi .vi{display:revert}
       <h3><span class="en">Multi-Session</span><span class="vi">&#272;a Phi&#234;n</span></h3>
       <p><span class="en">Run 7+ Claude Code agents simultaneously. Tile, cascade, or focus layouts. Drag, resize, and organize your sessions freely.</span><span class="vi">Ch&#7841;y 7+ agent Claude Code &#273;&#7891;ng th&#7901;i. B&#7889; c&#7909;c tile, cascade, ho&#7863;c focus. K&#233;o, resize, t&#7893; ch&#7913;c session t&#7921; do.</span></p>
     </div>
-    <div class="value-card reveal">
+    <div class="value-card reveal reveal-right">
       <div class="value-icon">
         <!-- Windows icon -->
         <svg viewBox="0 0 24 24"><path d="M3 5.5L10.5 4.5V11.5H3V5.5Z"/><path d="M11.5 4.3L21 3V11.5H11.5V4.3Z"/><path d="M3 12.5H10.5V19.5L3 18.5V12.5Z"/><path d="M11.5 12.5H21V21L11.5 19.7V12.5Z"/></svg>
@@ -1350,6 +1440,102 @@ document.querySelectorAll('.nav-links a[href^="#"]').forEach(function(a) {
 
   init();
   animate();
+})();
+
+/* ==========================================================================
+   PARALLAX on hero orbs
+   ========================================================================== */
+(function() {
+  var orbs = document.querySelectorAll('.hero-orb');
+  var hero = document.querySelector('.hero');
+  if (!orbs.length) return;
+  window.addEventListener('scroll', function() {
+    var scrollY = window.scrollY;
+    var heroH = hero.offsetHeight;
+    if (scrollY > heroH) return;
+    var factor = scrollY * 0.15;
+    orbs[0].style.transform = 'translateX(-50%) translateY(' + (-factor) + 'px)';
+    if (orbs[1]) orbs[1].style.transform = 'translateY(' + (factor * 0.8) + 'px)';
+    if (orbs[2]) orbs[2].style.transform = 'translateY(' + (-factor * 0.6) + 'px)';
+  }, { passive: true });
+})();
+
+/* ==========================================================================
+   TILT effect on feature cards (mouse follow)
+   ========================================================================== */
+(function() {
+  document.querySelectorAll('.feature-card, .value-card').forEach(function(card) {
+    card.addEventListener('mousemove', function(e) {
+      var rect = card.getBoundingClientRect();
+      var x = e.clientX - rect.left;
+      var y = e.clientY - rect.top;
+      var cx = rect.width / 2;
+      var cy = rect.height / 2;
+      var rotateX = ((y - cy) / cy) * -4;
+      var rotateY = ((x - cx) / cx) * 4;
+      card.style.transform = 'perspective(800px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg) translateY(-4px) scale(1.01)';
+    });
+    card.addEventListener('mouseleave', function() {
+      card.style.transform = '';
+    });
+  });
+})();
+
+/* ==========================================================================
+   ANIMATED NAV ACTIVE LINK on scroll
+   ========================================================================== */
+(function() {
+  var sections = document.querySelectorAll('section[id]');
+  var navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+  window.addEventListener('scroll', function() {
+    var scrollY = window.scrollY + 100;
+    sections.forEach(function(sec) {
+      var top = sec.offsetTop;
+      var bottom = top + sec.offsetHeight;
+      var id = sec.getAttribute('id');
+      navLinks.forEach(function(link) {
+        if (link.getAttribute('href') === '#' + id) {
+          if (scrollY >= top && scrollY < bottom) {
+            link.style.color = 'var(--accent-blue)';
+          } else {
+            link.style.color = '';
+          }
+        }
+      });
+    });
+  }, { passive: true });
+})();
+
+/* ==========================================================================
+   HERO BADGE entrance animation
+   ========================================================================== */
+(function() {
+  var badges = document.querySelectorAll('.hero .badges img');
+  badges.forEach(function(badge, i) {
+    badge.style.opacity = '0';
+    badge.style.transform = 'translateY(10px)';
+    setTimeout(function() {
+      badge.style.transition = 'opacity .5s var(--ease-out), transform .5s var(--ease-spring)';
+      badge.style.opacity = '1';
+      badge.style.transform = 'translateY(0)';
+    }, 600 + i * 120);
+  });
+})();
+
+/* ==========================================================================
+   HERO BUTTONS entrance animation
+   ========================================================================== */
+(function() {
+  var btns = document.querySelectorAll('.btn-group .btn');
+  btns.forEach(function(btn, i) {
+    btn.style.opacity = '0';
+    btn.style.transform = 'translateY(16px)';
+    setTimeout(function() {
+      btn.style.transition = 'all .6s var(--ease-spring)';
+      btn.style.opacity = '1';
+      btn.style.transform = 'translateY(0)';
+    }, 900 + i * 150);
+  });
 })();
 
 /* ==========================================================================
