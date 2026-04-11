@@ -32,7 +32,7 @@ echo  [2/2] Dang khoi dong server...
 echo.
 
 :: Mở browser sau 2 giây
-start /b cmd /c "timeout /t 2 /nobreak > nul && start http://localhost:8765"
+start /b cmd /c "timeout /t 2 /nobreak > nul && start http://127.0.0.1:8765"
 
 :: Chạy server (giữ cửa sổ này mở)
 node server.js
