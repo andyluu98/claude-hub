@@ -1,10 +1,10 @@
 /**
  * Claude Hub v4 — Windows Native Dashboard with xterm.js
- * Chạy: node server.js  →  http://localhost:8765
+ * Run: node server.js  →  http://localhost:8765
  *
- * Kien truc: moi session = 1 PTY spawn claude.exe truc tiep,
- * raw bytes pipe qua WebSocket vao xterm.js terminal trong browser.
- * → render dung TUI cua Claude Code (interactive chat thuc su).
+ * Architecture: each session = 1 PTY spawning claude.exe directly,
+ * raw bytes pipe through WebSocket into xterm.js terminal in browser.
+ * → renders the real Claude Code TUI (actual interactive chat).
  */
 
 const express   = require('express');
@@ -18,7 +18,7 @@ const os = require('os');
 
 let pty;
 try { pty = require('node-pty'); }
-catch(e) { console.error('\n❌  Thieu node-pty. Chay: npm install\n'); process.exit(1); }
+catch(e) { console.error('\n❌  Missing node-pty. Run: npm install\n'); process.exit(1); }
 
 const PORT = 8765;
 const HOST = '127.0.0.1'; // Loopback only — see SECURITY in README
@@ -55,7 +55,7 @@ class Session {
     this.autoAccept = !!autoAccept;
     this.status     = opts.status || 'stopped'; // running | stopped
     this.lane       = opts.lane || 'active';    // active | pending | done
-    this.startedAt  = opts.startedAt || new Date().toLocaleTimeString('vi-VN');
+    this.startedAt  = opts.startedAt || new Date().toLocaleTimeString('en-US');
     this.proc       = null;
     this.history    = opts.history ? [opts.history] : []; // raw bytes buffer de replay
     this.maxHistory = 500_000; // ~500KB
@@ -99,7 +99,7 @@ function sendToTerm(sessionId, chunk) {
 }
 
 // ── Persistence ────────────────────────────────────────────────────
-// Luu trong thu muc project (theo yeu cau) de git-ignore de.
+// Store in project directory for easy .gitignore.
 const SESSIONS_FILE = path.join(__dirname, '.claude-hub-sessions.json');
 
 function serializeSessions() {
@@ -108,7 +108,7 @@ function serializeSessions() {
     status: s.status === 'running' ? 'running' : 'stopped',
     lane: s.lane || 'active',
     startedAt: s.startedAt,
-    // chi luu tail ~50KB de replay lai terminal buffer
+    // only save tail ~50KB to replay terminal buffer
     history: s.history.join('').slice(-50_000),
   }));
 }
@@ -129,14 +129,14 @@ function loadPersistedSessions() {
     const arr = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
     for (const o of arr) {
       const s = new Session(o.id, o.name, o.cwd, o.autoAccept, {
-        status: 'stopped', // LUON khoi dong o trang thai stopped, cho user Resume
+        status: 'stopped', // always start in stopped state, wait for user to Resume
         lane: o.lane || 'active',
         startedAt: o.startedAt,
         history: o.history || '',
       });
       sessions.set(s.id, s);
     }
-    console.log(`📂  Loaded ${arr.length} persisted sessions (stopped) — click Resume de khoi dong lai`);
+    console.log(`📂  Loaded ${arr.length} persisted sessions (stopped) — click Resume to restart`);
   } catch(e) { console.error('load err:', e.message); }
 }
 
@@ -148,7 +148,7 @@ function startPty(s, opts) {
   try { if (!fs.existsSync(workCwd) || !fs.statSync(workCwd).isDirectory()) throw 0; }
   catch { workCwd = process.env.USERPROFILE || 'C:\\'; s.cwd = workCwd; }
 
-  // Tim claude.exe
+  // Find claude.exe
   const candidates = [
     path.join(process.env.USERPROFILE || '', '.local', 'bin', 'claude.exe'),
     'claude.exe',
@@ -156,7 +156,7 @@ function startPty(s, opts) {
   ];
 
   const args = [];
-  if (opts.resume) args.push('--continue'); // resume cuoc hoi thoai gan nhat trong cwd
+  if (opts.resume) args.push('--continue'); // resume most recent conversation in cwd
   if (s.autoAccept) args.push('--dangerously-skip-permissions');
   let spawned = false;
   for (const cmd of candidates) {
@@ -172,7 +172,7 @@ function startPty(s, opts) {
     } catch (_) {}
   }
   if (!spawned) {
-    console.error('Khong tim thay claude.exe');
+    console.error('Cannot find claude.exe');
     s.status = 'stopped';
     pushSession(s);
     return;
@@ -353,13 +353,13 @@ app.post('/api/sessions/:id/resume', (req, res) => {
   const s = sessions.get(req.params.id);
   if (!s) return res.status(404).json({ error: 'not found' });
   if (s.status === 'running') return res.json({ ok: true, already: true });
-  // Giu lai history tail de client van thay noi dung cu sau do PTY se ghi de
+  // Keep history tail so client still sees old content before PTY overwrites
   startPty(s, { resume: true });
   persistSessions(true);
   res.json({ ok: true });
 });
 
-// Chuyen session sang lane khac (active|pending|done)
+// Move session to another lane (active|pending|done)
 // active  → auto resume PTY (neu chua running)
 // pending → auto stop PTY (giu history)
 // done    → auto stop PTY (giu history)
@@ -384,7 +384,7 @@ app.post('/api/sessions/:id/lane', (req, res) => {
   res.json({ ok: true, prev, lane });
 });
 
-// Resume tat ca session dang stopped
+// Resume all stopped sessions
 app.post('/api/sessions/resume-all', (_req, res) => {
   let n = 0;
   for (const s of sessions.values()) {
@@ -425,14 +425,14 @@ app.delete('/api/sessions/:id', (req, res) => {
 });
 
 // ── File operations ───────────────────────────────────────────────
-// Xoa file/folder vao Recycle Bin qua VBScript + Shell.Application COM
+// Delete file/folder to Recycle Bin via VBScript + Shell.Application COM
 // (tranh PowerShell vi may user co the loi .NET ServicePointManager)
 function recycleDelete(target, cb) {
   try {
     if (!fs.existsSync(target)) return cb('path not found');
     const parent = path.dirname(target);
     const name   = path.basename(target);
-    // Escape " trong tham so string VBScript
+    // Escape " in VBScript string parameter
     const esc = s => s.replace(/"/g, '""');
     const vbs =
       'Set oShell = CreateObject("Shell.Application")\r\n' +
@@ -440,7 +440,7 @@ function recycleDelete(target, cb) {
       'If oFolder Is Nothing Then WScript.Quit 2\r\n' +
       'Set oItem = oFolder.ParseName("' + esc(name) + '")\r\n' +
       'If oItem Is Nothing Then WScript.Quit 3\r\n' +
-      // Verb "delete" dua vao Recycle Bin, khong hien confirm popup do flag & H100
+      // Verb "delete" sends to Recycle Bin, no confirm popup due to flag & H100
       'oItem.InvokeVerb("delete")\r\n';
     const tmp = path.join(os.tmpdir(), 'claude-hub-recycle-' + Date.now() + '-' + Math.random().toString(36).slice(2,8) + '.vbs');
     fs.writeFileSync(tmp, vbs, 'utf8');
@@ -450,7 +450,7 @@ function recycleDelete(target, cb) {
     proc.on('exit', code => {
       try { fs.unlinkSync(tmp); } catch(_) {}
       if (code === 0) {
-        // Verify file da xoa (InvokeVerb async, doi 1 chut)
+        // Verify file was deleted (InvokeVerb is async, wait a bit)
         setTimeout(() => {
           if (!fs.existsSync(target)) cb(null);
           else cb('Delete khong thanh cong (file van ton tai)');
@@ -474,7 +474,7 @@ function uniqueDuplicate(src) {
   throw new Error('cannot find unique name');
 }
 
-// Mo file bang app mac dinh (Windows: start "")
+// Open file with default app (Windows: start "")
 app.post('/api/file-open', (req, res) => {
   const p = String(req.body.path || '').trim();
   if (!p || hasShellMeta(p) || !fs.existsSync(p)) return res.status(400).json({ error: 'invalid path' });
@@ -484,7 +484,7 @@ app.post('/api/file-open', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Reveal file trong Explorer (highlight file)
+// Reveal file in Explorer (highlight file)
 app.post('/api/file-reveal', (req, res) => {
   const p = String(req.body.path || '').trim();
   if (!p || hasShellMeta(p) || !fs.existsSync(p)) return res.status(400).json({ error: 'invalid path' });
@@ -494,7 +494,7 @@ app.post('/api/file-reveal', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Xoa vao Recycle Bin
+// Delete to Recycle Bin
 app.post('/api/file-delete', (req, res) => {
   const p = String(req.body.path || '').trim();
   if (!p || !fs.existsSync(p)) return res.status(400).json({ error: 'invalid path' });
@@ -536,7 +536,7 @@ app.post('/api/file-duplicate', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Tao file/folder moi trong parent
+// Create new file/folder in parent
 app.post('/api/file-new', (req, res) => {
   const parent = String(req.body.parent || '').trim();
   const name = String(req.body.name || '').trim();
@@ -580,7 +580,7 @@ app.post('/api/paste-image', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Mo folder bang tool native (explorer | vscode | cmd)
+// Open folder with native tool (explorer | vscode | cmd)
 app.post('/api/open', (req, res) => {
   const p = String(req.body.path || '').trim();
   const action = String(req.body.action || 'explorer').toLowerCase();
@@ -613,7 +613,7 @@ app.post('/api/open', (req, res) => {
 
 app.get('/api/overseer', (_, res) => res.json({ rule: buildRuleSummary() }));
 
-// Broadcast overseer rule moi 3s
+// Broadcast overseer rule every 3s
 setInterval(() => broadcast({ type: 'overseer_rule', rule: buildRuleSummary() }), 3000);
 
 // ── WebSocket routing ──────────────────────────────────────────────

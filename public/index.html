@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Claude Hub v4</title>
@@ -145,7 +145,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:12px; margin-lef
 #main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 #workspace { flex:1; display:flex; flex-direction:row; overflow:hidden; min-height:0; }
 
-/* Sidebar: file explorer theo session active */
+/* Sidebar: file explorer for active session */
 #sidebar {
   width:300px; min-width:180px; max-width:60vw; flex-shrink:0; background:var(--panel-solid);
   border-right:1px solid var(--border); display:flex; flex-direction:column;
@@ -285,7 +285,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:12px; margin-lef
 .pane[data-status="stopped"] [data-kill]   { display:none; }
 .pane[data-status="stopped"] .pane-body    { opacity:.7; }
 
-/* Lane filter: body class .view-{lane} chi hien pane thuoc lane do */
+/* Lane filter: body class .view-{lane} shows only panes in that lane */
 body:not(.view-active)  .pane[data-lane="active"]  { display:none !important; }
 body:not(.view-pending) .pane[data-lane="pending"] { display:none !important; }
 body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
@@ -553,28 +553,28 @@ body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
   <button id="btn-cwd">&#x1F4C1; (home)</button>
   <label class="chk"><input type="checkbox" id="chk-auto" checked> &#x26A1; Auto-accept</label>
   <button class="btn btn-primary" onclick="newSession()">+ New Session</button>
-  <button class="btn btn-primary" onclick="resumeAll()" title="Khoi dong lai moi session da stopped">&#x25B6; Resume All</button>
+  <button class="btn btn-primary" onclick="resumeAll()" title="Restart all stopped sessions">&#x25B6; Resume All</button>
   <button class="btn btn-ghost" onclick="killAll()">Stop All</button>
   <div style="flex:1"></div>
   <div class="layout-sel" id="layout-sel">
-    <button data-layout="tile" class="active" title="Tile deu">&#x25A6; Tile</button>
-    <button data-layout="cols" title="Chia cot">&#x2590;&#x2590; Cols</button>
-    <button data-layout="rows" title="Chia hang">&#x2630; Rows</button>
-    <button data-layout="cascade" title="Xep chong">&#x25A3; Cascade</button>
-    <button data-layout="focus" title="Full 1 cai">&#x26F6; Focus</button>
+    <button data-layout="tile" class="active" title="Tile layout">&#x25A6; Tile</button>
+    <button data-layout="cols" title="Column layout">&#x2590;&#x2590; Cols</button>
+    <button data-layout="rows" title="Row layout">&#x2630; Rows</button>
+    <button data-layout="cascade" title="Cascade layout">&#x25A3; Cascade</button>
+    <button data-layout="focus" title="Focus mode">&#x26F6; Focus</button>
   </div>
-  <button class="btn btn-ghost" onclick="resetLayout()" title="Reset vi tri">&#x27F3;</button>
+  <button class="btn btn-ghost" onclick="resetLayout()" title="Reset positions">&#x27F3;</button>
   <button class="btn btn-purple" onclick="toggleOverseer()">&#x1F9E0; Overseer</button>
 </div>
 
 <div id="main">
   <div id="overseer-pane">
     <h3>&#x1F9E0; Overseer <span class="count" id="overseer-time"></span></h3>
-    <div id="overseer-rule">Dang tai...</div>
+    <div id="overseer-rule">Loading...</div>
   </div>
   <div id="workspace">
     <aside id="sidebar">
-      <div class="sb-toggle" onclick="toggleSidebar()" title="Thu/mo sidebar">&#x2630;</div>
+      <div class="sb-toggle" onclick="toggleSidebar()" title="Toggle sidebar">&#x2630;</div>
       <div class="sb-inner">
         <div class="sb-header">
           <span class="sb-title">&#x1F4C1; Explorer</span>
@@ -591,23 +591,23 @@ body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
           </div>
         </div>
         <div class="sb-list" id="sb-list">
-          <div class="sb-empty">Chua chon session</div>
+          <div class="sb-empty">No session selected</div>
         </div>
-        <div class="drop-overlay" id="sb-drop-overlay"><span class="drop-label">&#x1F4CE; Tha file vao day de attach</span></div>
+        <div class="drop-overlay" id="sb-drop-overlay"><span class="drop-label">&#x1F4CE; Drop files here to attach</span></div>
         <div class="sb-selected" id="sb-selected" style="display:none">
-          <div class="sb-sel-label">&#x1F4CE; Da attach:</div>
+          <div class="sb-sel-label">&#x1F4CE; Attached:</div>
           <div id="sb-sel-items"></div>
         </div>
       </div>
       <div class="sb-resize-handle" id="sb-resize-handle"></div>
     </aside>
     <div id="canvas">
-      <div class="drop-overlay" id="canvas-drop-overlay"><span class="drop-label">&#x1F4E5; Tha file vao terminal</span></div>
+      <div class="drop-overlay" id="canvas-drop-overlay"><span class="drop-label">&#x1F4E5; Drop files into terminal</span></div>
       <div id="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center">
         <div>
-          <h2 style="color:var(--text);margin-bottom:6px;font-size:18px">Chua co session nao</h2>
-          <p>Chon folder project va nhan "+ New Session"</p>
-          <p style="font-size:11px;margin-top:12px;color:var(--muted)">Meo: keo header de di chuyen, keo goc duoi-phai de resize · Click vao pane de sidebar hien file explorer</p>
+          <h2 style="color:var(--text);margin-bottom:6px;font-size:18px">No sessions yet</h2>
+          <p>Pick a project folder and click "+ New Session"</p>
+          <p style="font-size:11px;margin-top:12px;color:var(--muted)">Tip: drag header to move, drag bottom-right corner to resize · Click pane to show file explorer in sidebar</p>
         </div>
       </div>
     </div>
@@ -618,11 +618,11 @@ body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
 <div class="modal-bg" id="modal-bg">
   <div class="modal">
     <div class="modal-head">
-      <h3>&#x1F4C1; Chon thu muc lam viec</h3>
+      <h3>&#x1F4C1; Choose working directory</h3>
       <button class="btn btn-ghost" onclick="closeModal()" style="padding:5px 11px">&times;</button>
     </div>
     <div class="modal-paste">
-      <input id="inp-paste" type="text" placeholder="Paste duong dan vao day (vd: C:\Users\YourName\Projects\myapp)..." />
+      <input id="inp-paste" type="text" placeholder="Paste path here (e.g. C:\Users\YourName\Projects\myapp)..." />
       <button class="btn btn-primary" onclick="goToPasted()">&#x2192; Go</button>
     </div>
     <div class="modal-path" id="modal-path">...</div>
@@ -631,7 +631,7 @@ body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
       <button class="btn btn-ghost" onclick="browseFs('Drives')">&#x1F4BB; Drives</button>
       <button class="btn btn-ghost" onclick="goUp()">&#x2B06; Up</button>
       <div style="flex:1"></div>
-      <button class="btn btn-primary" onclick="pickCurrent()">&#x2713; Chon thu muc nay</button>
+      <button class="btn btn-primary" onclick="pickCurrent()">&#x2713; Select this folder</button>
     </div>
   </div>
 </div>
@@ -650,7 +650,7 @@ function connectCtrl() {
   ctrlWs = new WebSocket('ws://' + location.host + '/');
   ctrlWs.onopen = function() {
     var b = document.getElementById('ws-badge');
-    b.textContent = 'Da ket noi';
+    b.textContent = 'Connected';
     b.className = 'ok';
     retryCount = 0;
   };
@@ -677,7 +677,7 @@ function connectCtrl() {
       removePane(msg.id);
     } else if (msg.type === 'overseer_rule') {
       document.getElementById('overseer-rule').textContent = msg.rule;
-      document.getElementById('overseer-time').textContent = new Date().toLocaleTimeString('vi-VN');
+      document.getElementById('overseer-time').textContent = new Date().toLocaleTimeString('en-US');
     }
     document.getElementById('hdr-count').textContent = Object.keys(state).length + ' sessions';
     try { updateTabCounts(); } catch(_){}
@@ -697,7 +697,7 @@ function rebuildGrid() {
 
 // Paste from clipboard: image (save to file, send @path) or text
 function pasteFromClipboard(ws, sid) {
-  if (!navigator.clipboard) { toast('Clipboard API khong kha dung'); return; }
+  if (!navigator.clipboard) { toast('Clipboard API not available'); return; }
   // Try read clipboard items (image + text)
   if (navigator.clipboard.read) {
     navigator.clipboard.read().then(function(clipItems) {
@@ -713,8 +713,8 @@ function pasteFromClipboard(ws, sid) {
                   method:'POST', headers:{'Content-Type':'application/json'},
                   body: JSON.stringify({ data: reader.result, cwd: s ? s.cwd : '' })
                 }).then(function(r){return r.json();}).then(function(j) {
-                  if (j.ok && ws.readyState === 1) { ws.send('@' + j.path + ' '); toast('Da paste hinh: ' + j.name); }
-                  else if (!j.ok) toast('Loi: ' + (j.error||''));
+                  if (j.ok && ws.readyState === 1) { ws.send('@' + j.path + ' '); toast('Pasted image: ' + j.name); }
+                  else if (!j.ok) toast('Error: ' + (j.error||''));
                 });
               };
               reader.readAsDataURL(blob);
@@ -737,7 +737,7 @@ function pasteTextFromClipboard(ws) {
     var CR = String.fromCharCode(13), LF = String.fromCharCode(10);
     text = text.split(CR + LF).join(LF).split(CR).join(LF);
     if (ws.readyState === 1) ws.send(text);
-  }).catch(function(err) { toast('Paste loi: ' + err.message); });
+  }).catch(function(err) { toast('Paste error: ' + err.message); });
 }
 
 function addPane(s) {
@@ -756,14 +756,14 @@ function addPane(s) {
       (s.autoAccept ? '<span class="auto">AUTO</span>' : '') +
       '<span class="folder">' + esc(s.cwdShort || '?') + '</span>' +
       '<span class="lane-btns">' +
-        '<button title="Chuyen Active"  data-lane-set="active"  data-sid="' + s.id + '" class="' + (lane==='active'?'on':'') + '">A</button>' +
-        '<button title="Chuyen Pending" data-lane-set="pending" data-sid="' + s.id + '" class="' + (lane==='pending'?'on':'') + '">P</button>' +
-        '<button title="Chuyen Done"    data-lane-set="done"    data-sid="' + s.id + '" class="' + (lane==='done'?'on':'') + '">D</button>' +
+        '<button title="Move to Active"  data-lane-set="active"  data-sid="' + s.id + '" class="' + (lane==='active'?'on':'') + '">A</button>' +
+        '<button title="Move to Pending" data-lane-set="pending" data-sid="' + s.id + '" class="' + (lane==='pending'?'on':'') + '">P</button>' +
+        '<button title="Move to Done"    data-lane-set="done"    data-sid="' + s.id + '" class="' + (lane==='done'?'on':'') + '">D</button>' +
       '</span>' +
-      '<button title="Mo folder" data-folder="' + s.id + '">&#x1F4C1;</button>' +
+      '<button title="Open folder" data-folder="' + s.id + '">&#x1F4C1;</button>' +
       '<button title="Resume" data-resume="' + s.id + '">&#x25B6;</button>' +
-      '<button title="Stop (giu session)" data-kill="' + s.id + '">&#x25A0;</button>' +
-      '<button title="Xoa han" data-remove="' + s.id + '">&times;</button>' +
+      '<button title="Stop (keep session)" data-kill="' + s.id + '">&#x25A0;</button>' +
+      '<button title="Delete permanently" data-remove="' + s.id + '">&times;</button>' +
     '</div>' +
     '<div class="pane-body"><div class="xterm-wrap" id="term-' + s.id + '"></div></div>' +
     '<div class="pane-resize"></div>';
@@ -774,7 +774,7 @@ function addPane(s) {
   if (pos) {
     applyPos(el, pos);
   } else {
-    // Vi tri mac dinh: cascade
+    // Default position: cascade
     var idx = Object.keys(panes).length;
     applyPos(el, { x: 20 + idx * 30, y: 20 + idx * 30, w: 560, h: 340 });
   }
@@ -793,17 +793,17 @@ function addPane(s) {
   // Intercept keyboard: Ctrl+C (copy selection), Ctrl+V (paste), Shift+Insert (paste)
   term.attachCustomKeyEventHandler(function(ev) {
     if (ev.type !== 'keydown') return true;
-    // Ctrl+C: neu co selection → copy text, nguoc lai gui SIGINT binh thuong
+    // Ctrl+C: if selection → copy text, otherwise send SIGINT as normal
     if (ev.ctrlKey && (ev.key === 'c' || ev.key === 'C') && !ev.shiftKey) {
       var sel = term.getSelection();
       if (sel && sel.length > 0) {
         ev.preventDefault();
-        navigator.clipboard.writeText(sel).then(function() { toast('Da copy ' + sel.length + ' ky tu'); term.clearSelection(); });
+        navigator.clipboard.writeText(sel).then(function() { toast('Copied ' + sel.length + ' chars'); term.clearSelection(); });
         return false;
       }
-      return true; // khong co selection → gui Ctrl+C (SIGINT) binh thuong
+      return true; // no selection → send Ctrl+C (SIGINT) as normal
     }
-    // Shift+Enter: xuong dong trong Claude CLI
+    // Shift+Enter: newline in Claude CLI
     if (ev.shiftKey && ev.key === 'Enter') {
       ev.preventDefault();
       // Claude CLI TUI: Shift+Enter = ESC then Enter hoac CSI u sequence
@@ -834,7 +834,7 @@ function addPane(s) {
     pasteFromClipboard(ws, s.id);
   });
 
-  // Drag file/image vao terminal → gui @path
+  // Drag file/image into terminal → send @path
   termEl.addEventListener('dragover', function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
   termEl.addEventListener('drop', function(ev) {
     ev.preventDefault();
@@ -850,7 +850,7 @@ function addPane(s) {
         ws.send('@' + ref + ' ');
       }
     }
-    toast('Da gui ' + files.length + ' file vao terminal');
+    toast('Sent ' + files.length + ' file(s) to terminal');
   });
 
   var ws = new WebSocket('ws://' + location.host + '/term/' + s.id);
@@ -877,7 +877,7 @@ function addPane(s) {
 
   setTimeout(function() { try { fit.fit(); } catch(_){} }, 200);
 
-  // Debounced preset layout — tranh thrash khi bulk load nhieu session
+  // Debounced preset layout — avoid thrash when bulk loading sessions
   if (!pos) scheduleRelayout();
 }
 
@@ -946,7 +946,7 @@ function updateTabCounts() {
   document.getElementById('cnt-done').textContent    = c.done;
 }
 
-// Tab switcher: swap body class → CSS filter pane theo lane
+// Tab switcher: swap body class → CSS filter panes by lane
 var currentTab = localStorage.getItem('currentTab') || 'active';
 function switchTab(tab) {
   currentTab = tab;
@@ -956,7 +956,7 @@ function switchTab(tab) {
   document.querySelectorAll('#tab-bar button').forEach(function(b) {
     b.classList.toggle('active', b.dataset.tab === tab);
   });
-  // Re-layout + re-fit cho lane moi
+  // Re-layout + re-fit for new lane
   setTimeout(function() {
     applyPresetLayout();
     Object.values(panes).forEach(function(p) {
@@ -977,7 +977,7 @@ function updateEmpty() {
       var d = document.createElement('div');
       d.id = 'empty';
       d.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center';
-      d.innerHTML = '<div><h2 style="color:var(--text);margin-bottom:6px;font-size:18px">Chua co session nao</h2><p>Chon folder project va nhan "+ New Session"</p><p style="font-size:11px;margin-top:12px;color:var(--muted)">Meo: keo header de di chuyen, keo goc duoi-phai de resize</p></div>';
+      d.innerHTML = '<div><h2 style="color:var(--text);margin-bottom:6px;font-size:18px">No sessions yet</h2><p>Pick a project folder and click "+ New Session"</p><p style="font-size:11px;margin-top:12px;color:var(--muted)">Tip: drag header to move, drag bottom-right corner to resize</p></div>';
       document.getElementById('canvas').appendChild(d);
     }
   } else if (existing) existing.remove();
@@ -1043,7 +1043,7 @@ function focusPane(sid) {
 
 // ── Preset layouts ───────────────────────────────────────────────
 function applyPresetLayout() {
-  // Chi layout pane thuoc lane hien tai (visible)
+  // Only layout panes belonging to current lane (visible)
   var ids = Object.keys(panes).filter(function(sid) {
     var s = state[sid];
     return s && (s.lane || 'active') === currentTab;
@@ -1092,7 +1092,7 @@ function applyPresetLayout() {
 }
 
 function resetLayout() {
-  // Chi reset vi tri cua pane thuoc lane hien tai, giu cac lane khac
+  // Only reset positions of panes in current lane, keep other lanes
   Object.keys(panes).forEach(function(sid) {
     var s = state[sid];
     if (s && (s.lane || 'active') === currentTab) delete savedPositions[sid];
@@ -1136,7 +1136,7 @@ document.getElementById('canvas').addEventListener('click', function(e) {
   if (folderBtn) { showFolderPopup(folderBtn.dataset.folder, folderBtn); return; }
   var rmBtn = e.target.closest('[data-remove]');
   if (rmBtn) {
-    if (!confirm('Xoa han session nay? (History se mat)')) return;
+    if (!confirm('Permanently delete this session? (History will be lost)')) return;
     fetch('/api/sessions/' + rmBtn.dataset.remove, { method:'DELETE' }); return;
   }
   var nm = e.target.closest('.nm');
@@ -1216,7 +1216,7 @@ document.getElementById('inp-paste').addEventListener('paste', function(e) {
 function browseFs(p) {
   var url = '/api/fs' + (p ? '?path=' + encodeURIComponent(p) : '');
   fetch(url).then(function(r) { return r.json(); }).then(function(data) {
-    if (data.error) { toast('Loi: ' + data.error); return; }
+    if (data.error) { toast('Error: ' + data.error); return; }
     currentBrowse = data;
     document.getElementById('modal-path').textContent = '📍 ' + data.cwd;
     renderFsBody(data);
@@ -1233,7 +1233,7 @@ function renderFsBody(data) {
     var html = '';
 
     // Bookmarks section (only at drive level or empty)
-    html += '<div class="modal-section-title">&#x2B50; Bookmarks <button class="add-bm" onclick="addBookmark()">+ Them</button></div>';
+    html += '<div class="modal-section-title">&#x2B50; Bookmarks <button class="add-bm" onclick="addBookmark()">+ Add</button></div>';
     if (bookmarks.length) {
       bookmarks.forEach(function(bm) {
         html += '<div class="bm-item" data-bm-path="' + esc(bm.path) + '">' +
@@ -1248,7 +1248,7 @@ function renderFsBody(data) {
         '</div>';
       });
     } else {
-      html += '<div style="padding:10px 22px;color:var(--muted);font-size:11.5px;font-style:italic">Chua co bookmark. Nhan "+ Them" de luu thu muc hay dung.</div>';
+      html += '<div style="padding:10px 22px;color:var(--muted);font-size:11.5px;font-style:italic">No bookmarks yet. Click "+ Add" to save frequently used folders.</div>';
     }
 
     // Recent
@@ -1266,7 +1266,7 @@ function renderFsBody(data) {
 
     // Folders in current dir
     if (data.items && data.items.length) {
-      html += '<div class="modal-section-title">&#x1F4C2; Thu muc trong ' + esc(data.cwd.split(/[\\/]/).pop() || data.cwd) + '</div>';
+      html += '<div class="modal-section-title">&#x1F4C2; Folders in' + esc(data.cwd.split(/[\\/]/).pop() || data.cwd) + '</div>';
       data.items.forEach(function(it) {
         var tag = it.isProject ? '<span class="proj-tag">PROJECT</span>' : '';
         html += '<div class="fs-item" data-path="' + esc(it.path) + '">&#x1F4C1; ' + esc(it.name) + tag + '</div>';
@@ -1282,13 +1282,13 @@ function goUp() {
   else browseFs('Drives');
 }
 function pickCurrent() {
-  if (!currentBrowse || currentBrowse.cwd === 'Drives') { toast('Chon 1 folder cu the'); return; }
+  if (!currentBrowse || currentBrowse.cwd === 'Drives') { toast('Select a specific folder first'); return; }
   selectedCwd = currentBrowse.cwd;
   var shortName = selectedCwd.split(/[\\/]/).filter(Boolean).pop() || selectedCwd;
   document.getElementById('btn-cwd').innerHTML = '📁 <strong>' + esc(shortName) + '</strong>';
   document.getElementById('btn-cwd').title = selectedCwd;
   closeModal();
-  toast('Da chon: ' + shortName);
+  toast('Selected: ' + shortName);
 }
 document.getElementById('modal-body').addEventListener('click', function(e) {
   if (e.target.closest('.bm-actions')) return;
@@ -1299,30 +1299,30 @@ document.getElementById('modal-body').addEventListener('click', function(e) {
 });
 
 function addBookmark() {
-  if (!currentBrowse || currentBrowse.cwd === 'Drives') { toast('Browse toi folder muon bookmark truoc'); return; }
-  var name = prompt('Ten bookmark:', currentBrowse.cwd.split(/[\\/]/).filter(Boolean).pop());
+  if (!currentBrowse || currentBrowse.cwd === 'Drives') { toast('Browse to a folder to bookmark first'); return; }
+  var name = prompt('Bookmark name:', currentBrowse.cwd.split(/[\\/]/).filter(Boolean).pop());
   if (!name) return;
   fetch('/api/bookmarks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: name, path: currentBrowse.cwd }),
-  }).then(function() { renderFsBody(currentBrowse); toast('Da them bookmark'); });
+  }).then(function() { renderFsBody(currentBrowse); toast('Bookmark added'); });
 }
 function editBookmark(e, id) {
   e.stopPropagation();
-  var name = prompt('Ten moi:');
+  var name = prompt('New name:');
   if (!name) return;
   fetch('/api/bookmarks/' + id, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: name }),
-  }).then(function() { renderFsBody(currentBrowse); toast('Da sua'); });
+  }).then(function() { renderFsBody(currentBrowse); toast('Updated'); });
 }
 function deleteBookmark(e, id) {
   e.stopPropagation();
-  if (!confirm('Xoa bookmark?')) return;
+  if (!confirm('Remove bookmark?')) return;
   fetch('/api/bookmarks/' + id, { method: 'DELETE' })
-    .then(function() { renderFsBody(currentBrowse); toast('Da xoa'); });
+    .then(function() { renderFsBody(currentBrowse); toast('Removed'); });
 }
 
 // ── Actions ───────────────────────────────────────────────────────
@@ -1338,7 +1338,7 @@ function newSession() {
 }
 
 function killAll() {
-  if (!confirm('Dung tat ca session? (van giu lai de Resume sau)')) return;
+  if (!confirm('Stop all sessions? (kept for Resume later)')) return;
   Object.values(state).forEach(function(s) {
     if (s.status === 'running') fetch('/api/sessions/' + s.id + '/kill', { method:'POST' });
   });
@@ -1351,13 +1351,13 @@ function resumeAll() {
 }
 
 // ── Sidebar File Explorer ─────────────────────────────────────────
-var activeSid = null;          // session hien tai duoc focus
-var sbCurrentPath = null;      // path dang browse trong sidebar
-var sbSelected = {};           // { sid: { relPathOrAbs: true } } — theo doi checkbox
-var sbInsertLen = {};          // { sid: { key: numChars } } — de uncheck xoa dung so ky tu
+var activeSid = null;          // currently focused session
+var sbCurrentPath = null;      // path currently browsing in sidebar
+var sbSelected = {};           // { sid: { relPathOrAbs: true } } — track checkboxes
+var sbInsertLen = {};          // { sid: { key: numChars } } — to uncheck and remove correct chars
 var sbHistory = [];            // navigation history stack
 var sbHistoryIdx = -1;         // current position in history
-var sbNavigating = false;      // flag de khong push khi back/forward
+var sbNavigating = false;      // flag to prevent push during back/forward
 
 function setActiveSession(sid) {
   if (!sid || !state[sid]) return;
@@ -1384,7 +1384,7 @@ function sbRefresh() {
   if (sbCurrentPath) sbBrowse(sbCurrentPath, true);
 }
 
-// Auto-poll moi 2.5s de bat file moi sinh ra trong thu muc dang xem
+// Auto-poll every 2.5s to catch new files in the directory being viewed
 setInterval(function() {
   var sb = document.getElementById('sidebar');
   if (!sbCurrentPath) return;
@@ -1409,7 +1409,7 @@ function sbBrowse(p, silent) {
   if (pathInput) pathInput.value = p;
   // Drives special case
   if (p === 'Drives') {
-    document.getElementById('sb-crumb').innerHTML = '<span style="color:var(--muted)">&#x1F4BF; Chon o dia</span>';
+    document.getElementById('sb-crumb').innerHTML = '<span style="color:var(--muted)">&#x1F4BF; Select a drive</span>';
     var listEl = document.getElementById('sb-list');
     fetch('/api/fs?path=Drives')
       .then(function(r) { return r.json(); })
@@ -1418,7 +1418,7 @@ function sbBrowse(p, silent) {
         (data.items || []).forEach(function(d) {
           html += '<div class="sb-row" data-sb-dir="' + esc(d.path || d.name) + '"><span class="sb-icon">&#x1F4BF;</span><span class="sb-name">' + esc(d.name) + '</span></div>';
         });
-        listEl.innerHTML = html || '<div class="sb-empty">Khong tim thay o dia</div>';
+        listEl.innerHTML = html || '<div class="sb-empty">No drives found</div>';
         listEl.dataset.sig = '';
       });
     return;
@@ -1444,7 +1444,7 @@ function sbBrowse(p, silent) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.error) { listEl.innerHTML = '<div class="sb-empty">' + esc(data.error) + '</div>'; return; }
-      // Cho silent refresh: neu list khong thay doi thi khong re-render (tranh flicker)
+      // Silent refresh: skip re-render if list unchanged (avoid flicker)
       var sig = JSON.stringify((data.items || []).map(function(i) { return i.type + ':' + i.name + ':' + (i.size||0); }));
       if (silent && sig === listEl.dataset.sig) return;
       listEl.dataset.sig = sig;
@@ -1475,7 +1475,7 @@ function sbGoForward() {
 }
 
 function sbGoHome() {
-  if (!activeSid || !state[activeSid]) { toast('Click vao 1 terminal truoc'); return; }
+  if (!activeSid || !state[activeSid]) { toast('Click a terminal first'); return; }
   sbBrowse(state[activeSid].cwd);
 }
 
@@ -1488,15 +1488,15 @@ function fmtSize(b) {
 
 function renderSbList(items) {
   var list = document.getElementById('sb-list');
-  if (!items.length) { list.innerHTML = '<div class="sb-empty">Thu muc rong</div>'; return; }
+  if (!items.length) { list.innerHTML = '<div class="sb-empty">Empty folder</div>'; return; }
   // Up row
   var html = '';
   var upPath = sbCurrentPath.replace(/[\/][^\/]+[\/]?$/, '') || sbCurrentPath;
   if (upPath && upPath !== sbCurrentPath) {
     html += '<div class="sb-row" data-sb-up="' + esc(upPath) + '"><span class="sb-icon">&#x2B06;</span><span class="sb-name">.. (len mot cap)</span></div>';
   } else if (sbCurrentPath && /^[A-Za-z]:\?$/.test(sbCurrentPath)) {
-    // Dang o root cua drive → hien nut ve Drives
-    html += '<div class="sb-row" data-sb-dir="Drives"><span class="sb-icon">&#x1F4BF;</span><span class="sb-name">.. (tat ca o dia)</span></div>';
+    // At drive root → show button back to Drives list
+    html += '<div class="sb-row" data-sb-dir="Drives"><span class="sb-icon">&#x1F4BF;</span><span class="sb-name">.. (all drives)</span></div>';
   }
   var selMap = (activeSid && sbSelected[activeSid]) || {};
   items.forEach(function(it) {
@@ -1531,7 +1531,7 @@ function renderSbSelected() {
   }).join('');
 }
 
-// Tinh relative path neu file nam trong cwd session, nguoc lai dung absolute
+// Compute relative path if file is within session cwd, otherwise use absolute
 function relOrAbs(filePath, sessionCwd) {
   var BS = String.fromCharCode(92);
   var fp = filePath.split(BS).join('/').toLowerCase();
@@ -1542,10 +1542,10 @@ function relOrAbs(filePath, sessionCwd) {
 }
 
 function sbToggleFile(filePath, fileName, checked) {
-  if (!activeSid) { toast('Click vao 1 terminal truoc'); return; }
+  if (!activeSid) { toast('Click a terminal first'); return; }
   var s = state[activeSid];
   var p = panes[activeSid];
-  if (!s || !p || p.ws.readyState !== 1) { toast('Session khong san sang'); return; }
+  if (!s || !p || p.ws.readyState !== 1) { toast('Session not ready'); return; }
   sbSelected[activeSid] = sbSelected[activeSid] || {};
   sbInsertLen[activeSid] = sbInsertLen[activeSid] || {};
   var rel = relOrAbs(filePath, s.cwd);
@@ -1557,7 +1557,7 @@ function sbToggleFile(filePath, fileName, checked) {
     sbInsertLen[activeSid][filePath] = token.length;
     p.ws.send(token);
   } else {
-    // Gui backspace x N de xoa (DEL char = 0x7F — claude TUI dung DEL)
+    // Send backspace x N to delete (DEL char = 0x7F — Claude TUI uses DEL)
     var n = sbInsertLen[activeSid][filePath] || token.length;
     var bs = '';
     for (var i = 0; i < n; i++) bs += '\x7f';
@@ -1593,7 +1593,7 @@ document.getElementById('sidebar').addEventListener('click', function(e) {
   if (crumb) { sbBrowse(crumb.dataset.sbCrumb); return; }
 });
 
-// Click vao pane → set active
+// Click on pane → set active
 document.getElementById('canvas').addEventListener('mousedown', function(e) {
   var pane = e.target.closest('.pane');
   if (pane) {
@@ -1602,7 +1602,7 @@ document.getElementById('canvas').addEventListener('mousedown', function(e) {
   }
 }, true);
 
-// Global paste → forward clipboard vao PTY cua active session (text + image)
+// Global paste → forward clipboard to active session PTY (text + image)
 document.addEventListener('paste', function(e) {
   var tag = (e.target && e.target.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
@@ -1624,8 +1624,8 @@ document.addEventListener('paste', function(e) {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ data: reader.result, cwd: s ? s.cwd : '' })
           }).then(function(r){return r.json();}).then(function(j) {
-            if (j.ok) { p.ws.send('@' + j.path + ' '); toast('Da paste hinh: ' + j.name); }
-            else toast('Loi paste hinh: ' + (j.error||''));
+            if (j.ok) { p.ws.send('@' + j.path + ' '); toast('Pasted image: ' + j.name); }
+            else toast('Image paste error: ' + (j.error||''));
           });
         };
         reader.readAsDataURL(blob);
@@ -1686,7 +1686,7 @@ document.getElementById('sidebar').addEventListener('contextmenu', function(e) {
   var items;
   if (isFile) {
     items = [
-      { act:'open',       icon:'&#x1F4C2;', label:'Open (app mac dinh)' },
+      { act:'open',       icon:'&#x1F4C2;', label:'Open (default app)' },
       { act:'reveal',     icon:'&#x1F4CD;', label:'Reveal in Explorer' },
       'sep',
       { act:'attach',     icon:'&#x1F4CE;', label:'Attach to terminal' },
@@ -1698,7 +1698,7 @@ document.getElementById('sidebar').addEventListener('contextmenu', function(e) {
     ];
   } else {
     items = [
-      { act:'open',       icon:'&#x1F4C2;', label:'Open (vao trong)' },
+      { act:'open',       icon:'&#x1F4C2;', label:'Open' },
       { act:'reveal-dir', icon:'&#x1F4CD;', label:'Open in Explorer' },
       { act:'vscode',     icon:'&#x1F4BB;', label:'Open in VSCode' },
       'sep',
@@ -1715,7 +1715,7 @@ document.getElementById('sidebar').addEventListener('contextmenu', function(e) {
   openCtxMenu(e.clientX, e.clientY, items);
 });
 
-// Click ngoai dong menu
+// Click outside to close menu
 document.addEventListener('mousedown', function(e) {
   var menu = document.getElementById('ctx-menu');
   if (!menu.classList.contains('show')) return;
@@ -1739,7 +1739,7 @@ function handleCtxAction(act) {
   if (act === 'open') {
     if (t.type === 'file') {
       fetch('/api/file-open', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
-        .then(function(r){return r.json();}).then(function(j){ if(!j.ok) toast('Loi: '+j.error); });
+        .then(function(r){return r.json();}).then(function(j){ if(!j.ok) toast('Error: '+j.error); });
     } else {
       sbBrowse(t.path);
     }
@@ -1763,7 +1763,7 @@ function handleCtxAction(act) {
     return;
   }
   if (act === 'copy-path') {
-    navigator.clipboard.writeText(t.path).then(function(){ toast('Da copy path'); });
+    navigator.clipboard.writeText(t.path).then(function(){ toast('Path copied'); });
     return;
   }
   if (act === 'rename') {
@@ -1773,17 +1773,17 @@ function handleCtxAction(act) {
   if (act === 'duplicate') {
     fetch('/api/file-duplicate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
       .then(function(r){return r.json();}).then(function(j){
-        if (j.ok) { toast('Da duplicate'); sbRefresh(); }
-        else toast('Loi: '+j.error);
+        if (j.ok) { toast('Duplicated'); sbRefresh(); }
+        else toast('Error: '+j.error);
       });
     return;
   }
   if (act === 'delete') {
-    if (!confirm('Xoa "' + t.name + '" vao Recycle Bin?')) return;
+    if (!confirm('Delete "' + t.name + '" to Recycle Bin?')) return;
     fetch('/api/file-delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
       .then(function(r){return r.json();}).then(function(j){
-        if (j.ok) { toast('Da xoa vao Recycle Bin'); sbRefresh(); }
-        else toast('Loi: '+j.error);
+        if (j.ok) { toast('Moved to Recycle Bin'); sbRefresh(); }
+        else toast('Error: '+j.error);
       });
     return;
   }
@@ -1795,8 +1795,8 @@ function handleCtxAction(act) {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ parent: parent, name: name, type: act === 'new-file' ? 'file' : 'dir' }),
     }).then(function(r){return r.json();}).then(function(j){
-      if (j.ok) { toast('Da tao ' + name); sbRefresh(); }
-      else toast('Loi: '+j.error);
+      if (j.ok) { toast('Created ' + name); sbRefresh(); }
+      else toast('Error: '+j.error);
     });
     return;
   }
@@ -1804,7 +1804,7 @@ function handleCtxAction(act) {
     fetch('/api/sessions', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ cwd: t.path, autoAccept: document.getElementById('chk-auto').checked }),
-    }).then(function(){ toast('Da tao session: ' + t.name); });
+    }).then(function(){ toast('Created session: ' + t.name); });
     return;
   }
 }
@@ -1837,8 +1837,8 @@ function startInlineFileRename(t) {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ path: t.path, newName: newName }),
     }).then(function(r){return r.json();}).then(function(j){
-      if (j.ok) { toast('Da rename'); sbRefresh(); }
-      else { toast('Loi: '+j.error); var span = document.createElement('span'); span.className='sb-name'; span.innerHTML=oldHtml; cleanup(span); }
+      if (j.ok) { toast('Renamed'); sbRefresh(); }
+      else { toast('Error: '+j.error); var span = document.createElement('span'); span.className='sb-name'; span.innerHTML=oldHtml; cleanup(span); }
     });
   }
   input.addEventListener('keydown', function(ev) {
@@ -1859,7 +1859,7 @@ function showFolderPopup(sid, anchorBtn) {
   var pop = document.getElementById('folder-pop');
   var fullPath = s.cwd || '';
   var BS = String.fromCharCode(92);
-  // Breadcrumb: split path theo  hoac /, bo rong
+  // Breadcrumb: split path by \ or /, skip empty
   var parts = fullPath.split(/[\/]/).filter(Boolean);
   var crumbHtml = '';
   var accum = '';
@@ -1885,7 +1885,7 @@ function showFolderPopup(sid, anchorBtn) {
   // Vi tri: ngay duoi nut anchor
   var r = anchorBtn.getBoundingClientRect();
   pop.classList.add('show');
-  // Tinh lai sau khi show de co kich thuoc that
+  // Recalculate after show to get actual dimensions
   var pw = pop.offsetWidth, ph = pop.offsetHeight;
   var left = Math.min(r.left, window.innerWidth - pw - 12);
   var top  = r.bottom + 6;
@@ -1907,14 +1907,14 @@ document.getElementById('folder-pop').addEventListener('click', function(e) {
       method:'POST',
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({ path: crumb.dataset.crumb, action: 'explorer' }),
-    }).then(function(){ toast('Da mo Explorer'); });
+    }).then(function(){ toast('Opened in Explorer'); });
     return;
   }
   var act = e.target.closest('[data-act]');
   if (!act) return;
   var action = act.dataset.act;
   if (action === 'copy') {
-    navigator.clipboard.writeText(fullPath).then(function(){ toast('Da copy path'); });
+    navigator.clipboard.writeText(fullPath).then(function(){ toast('Path copied'); });
     hideFolderPopup();
     return;
   }
@@ -1923,13 +1923,13 @@ document.getElementById('folder-pop').addEventListener('click', function(e) {
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify({ path: fullPath, action: action }),
   }).then(function(r){ return r.json(); }).then(function(j){
-    if (j.ok) toast('Da mo ' + action);
-    else toast('Loi: ' + (j.error || 'unknown'));
+    if (j.ok) toast('Opened in ' + action);
+    else toast('Error: ' + (j.error || 'unknown'));
   });
   hideFolderPopup();
 });
 
-// Click ngoai de dong popup
+// Click outside to close popup
 document.addEventListener('mousedown', function(e) {
   var pop = document.getElementById('folder-pop');
   if (!pop.classList.contains('show')) return;
@@ -2000,7 +2000,7 @@ function esc(s) {
 
   function extractPaths(e) {
     // Electron/NW.js: e.dataTransfer.files co .path
-    // Trinh duyet thuong: chi co .name, khong co full path
+    // Standard browser: only has .name, no full path
     // Fallback: text/uri-list hoac text/plain
     var paths = [];
     var files = e.dataTransfer.files;
@@ -2024,7 +2024,7 @@ function esc(s) {
     return paths;
   }
 
-  // ── Sidebar drop: gui @path vao terminal (giong canvas drop) ──
+  // ── Sidebar drop: send @path to terminal (same as canvas drop) ──
   sidebar.addEventListener('dragenter', function(e) { e.preventDefault(); sbCounter++; sbOverlay.classList.add('show'); });
   sidebar.addEventListener('dragleave', function(e) { sbCounter--; if (sbCounter <= 0) { sbCounter = 0; sbOverlay.classList.remove('show'); } });
   sidebar.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
@@ -2033,22 +2033,22 @@ function esc(s) {
     sendDroppedFiles(e, activeSid);
   });
 
-  // ── Ham chung: gui file paths vao terminal ──
+  // ── Common function: send file paths to terminal ──
   function sendDroppedFiles(e, fallbackSid) {
     var paths = extractPaths(e);
-    if (!paths.length) { toast('Khong doc duoc duong dan file'); return; }
+    if (!paths.length) { toast('Cannot read file path'); return; }
     var targetPane = e.target.closest('.pane');
     var sid = targetPane ? targetPane.id.replace(/^pane-/, '') : fallbackSid;
-    if (!sid) { toast('Click vao 1 terminal truoc'); return; }
+    if (!sid) { toast('Click a terminal first'); return; }
     var p = panes[sid];
-    if (!p || p.ws.readyState !== 1) { toast('Session khong san sang'); return; }
+    if (!p || p.ws.readyState !== 1) { toast('Session not ready'); return; }
     paths.forEach(function(fp) {
       var s = state[sid];
       var rel = relOrAbs(fp, s ? s.cwd : '');
       var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
       p.ws.send('@' + ref + ' ');
     });
-    toast('Da gui ' + paths.length + ' file vao terminal');
+    toast('Sent ' + paths.length + ' file(s) to terminal');
   }
 
   // ── Canvas drop: insert @path into terminal ──
