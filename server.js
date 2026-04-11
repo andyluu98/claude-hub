@@ -1,5 +1,5 @@
 /**
- * Claude Hub v3 — Windows Native Dashboard with xterm.js
+ * Claude Hub v4 — Windows Native Dashboard with xterm.js
  * Chạy: node server.js  →  http://localhost:8765
  *
  * Kien truc: moi session = 1 PTY spawn claude.exe truc tiep,

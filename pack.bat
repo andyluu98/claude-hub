@@ -18,6 +18,10 @@ copy /y package.json "%OUT%\" >nul
 copy /y package-lock.json "%OUT%\" >nul
 copy /y start.bat "%OUT%\" >nul
 copy /y .gitignore "%OUT%\" >nul
+copy /y README.md "%OUT%\" >nul
+copy /y LICENSE "%OUT%\" >nul
+mkdir "%OUT%\public" >nul 2>&1
+copy /y public\index.html "%OUT%\public\" >nul
 
 echo  [OK] Da copy files vao %OUT%\
 echo.
