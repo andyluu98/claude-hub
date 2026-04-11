@@ -26,7 +26,7 @@ A Windows-native dashboard for managing multiple [Claude Code](https://claude.co
 ## Install
 
 ```bat
-git clone https://github.com/ltuananhsd/claude-hub.git
+git clone https://github.com/andyluu98/claude-hub.git
 cd claude-hub
 npm install
 ```
