@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Claude Hub v4</title>
+<link rel="stylesheet" href="/xterm-css/xterm.css">
+<script src="/xterm/xterm.js"></script>
+<script src="/xterm-fit/xterm-addon-fit.js"></script>
+<style>
+:root {
+  --bg:#07090d; --bg2:#0d1117; --panel:rgba(22,27,34,.85); --panel-solid:#161b22;
+  --border:#262c36; --border-strong:#3a4150; --text:#e6edf3; --text-dim:#b1bac4; --muted:#6e7681;
+  --green:#3fb950; --red:#f85149; --blue:#58a6ff; --blue-dim:#388bfd; --orange:#e3b341; --purple:#a371f7;
+  --accent:linear-gradient(135deg,#58a6ff 0%, #a371f7 100%);
+  --shadow-md:0 4px 12px rgba(0,0,0,.35);
+  --shadow-lg:0 12px 32px rgba(0,0,0,.5);
+  --radius:10px;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; }
+body {
+  background:
+    radial-gradient(at 80% 0%, rgba(163,113,247,.08), transparent 50%),
+    radial-gradient(at 0% 100%, rgba(88,166,255,.06), transparent 50%),
+    var(--bg);
+  color:var(--text);
+  font-family:-apple-system,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif;
+  font-size:13.5px;
+  -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; overflow:hidden;
+  letter-spacing:-.005em;
+}
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 22px;
+  background:var(--panel);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+header h1 {
+  font-size:15px; font-weight:650; letter-spacing:-.01em;
+  background:var(--accent); -webkit-background-clip:text;
+  background-clip:text; color:transparent;
+  display:flex; align-items:center; gap:10px;
+}
+header h1::before {
+  content:''; display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:var(--accent); box-shadow:0 0 12px rgba(163,113,247,.6);
+}
+header h1 span { color:var(--muted); font-weight:400; font-size:12px; margin-left:4px; -webkit-text-fill-color:var(--muted); }
+#ws-badge {
+  padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600;
+  background:rgba(110,118,129,.15); color:var(--muted);
+  border:1px solid var(--border);
+  display:flex; align-items:center; gap:6px;
+}
+#ws-badge::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--muted); }
+#ws-badge.ok { background:rgba(63,185,80,.12); color:var(--green); border-color:rgba(63,185,80,.3); }
+#ws-badge.ok::before { background:var(--green); box-shadow:0 0 8px var(--green); }
+
+#bar {
+  display:flex; gap:8px; align-items:center;
+  padding:10px 22px;
+  border-bottom:1px solid var(--border);
+  flex-wrap:wrap; flex-shrink:0;
+  background:var(--panel);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+#bar input {
+  background:rgba(13,17,23,.6);
+  border:1px solid var(--border);
+  color:var(--text);
+  border-radius:7px;
+  padding:7px 12px;
+  font-size:13px;
+  outline:none;
+  transition:all .15s;
+  font-family:inherit;
+}
+#bar input:focus { border-color:var(--blue); background:rgba(13,17,23,.9); box-shadow:0 0 0 3px rgba(88,166,255,.1); }
+#bar input::placeholder { color:var(--muted); }
+#inp-name { width:140px; }
+#btn-cwd {
+  background:rgba(13,17,23,.6);
+  color:var(--text);
+  padding:7px 12px;
+  border-radius:7px;
+  border:1px solid var(--border);
+  cursor:pointer; max-width:300px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:12px;
+  transition:all .15s;
+  display:flex; align-items:center; gap:6px;
+  font-family:inherit;
+}
+#btn-cwd:hover { border-color:var(--blue); background:rgba(88,166,255,.08); }
+.chk {
+  display:flex; align-items:center; gap:7px;
+  color:var(--orange); cursor:pointer; font-size:12px; user-select:none;
+  padding:6px 10px; border-radius:7px;
+  background:rgba(227,179,65,.08);
+  border:1px solid rgba(227,179,65,.2);
+  font-weight:500;
+}
+.chk:hover { background:rgba(227,179,65,.14); }
+.chk input { width:14px; height:14px; accent-color:var(--orange); }
+.btn {
+  padding:7px 14px; border-radius:7px; border:1px solid transparent;
+  cursor:pointer; font-size:12.5px; font-weight:600; white-space:nowrap;
+  transition:all .15s; font-family:inherit;
+}
+.btn:hover { transform:translateY(-1px); box-shadow:var(--shadow-md); }
+.btn:active { transform:translateY(0); }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-danger  { background:linear-gradient(135deg,#f85149,#da3633); color:#fff; }
+.btn-ghost   { background:rgba(110,118,129,.12); color:var(--text); border-color:var(--border); }
+.btn-ghost:hover { background:rgba(110,118,129,.2); border-color:var(--border-strong); }
+.btn-purple  { background:rgba(163,113,247,.15); color:var(--purple); border-color:rgba(163,113,247,.3); }
+.btn-purple:hover { background:rgba(163,113,247,.25); }
+
+/* Preset layouts */
+.layout-sel {
+  display:flex; gap:2px;
+  background:rgba(13,17,23,.6);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:3px;
+}
+.layout-sel button {
+  background:transparent; border:none; color:var(--muted);
+  padding:5px 11px; cursor:pointer; font-size:11px;
+  border-radius:5px; font-weight:500;
+  transition:all .12s; font-family:inherit;
+}
+.layout-sel button:hover { color:var(--text); background:rgba(255,255,255,.04); }
+.layout-sel button.active {
+  background:var(--accent); color:#fff; font-weight:600;
+  box-shadow:0 2px 8px rgba(88,166,255,.3);
+}
+
+/* Main workspace */
+#main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+#workspace { flex:1; display:flex; flex-direction:row; overflow:hidden; min-height:0; }
+
+/* Sidebar: file explorer theo session active */
+#sidebar {
+  width:300px; min-width:180px; max-width:60vw; flex-shrink:0; background:var(--panel-solid);
+  border-right:1px solid var(--border); display:flex; flex-direction:column;
+  overflow:hidden; transition:width .2s; position:relative;
+}
+#sidebar.resizing { transition:none; user-select:none; }
+#sidebar.collapsed { width:40px; min-width:40px; }
+#sidebar.collapsed .sb-inner { display:none; }
+#sidebar.collapsed .sb-resize-handle { display:none; }
+#sidebar .sb-resize-handle {
+  position:absolute; top:0; right:0; width:6px; height:100%;
+  cursor:col-resize; z-index:20; background:transparent;
+}
+#sidebar .sb-resize-handle:hover, #sidebar .sb-resize-handle.dragging {
+  background:var(--blue); box-shadow:0 0 6px rgba(88,166,255,.4);
+}
+#sidebar .sb-toggle {
+  height:36px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; border-bottom:1px solid var(--border); color:var(--muted);
+  font-size:14px; flex-shrink:0;
+}
+#sidebar .sb-toggle:hover { color:var(--blue); background:rgba(88,166,255,.05); }
+#sidebar .sb-inner { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+#sidebar .sb-header {
+  padding:8px 10px; border-bottom:1px solid var(--border); font-size:11px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+#sidebar .sb-header .sb-title { color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+#sidebar .sb-nav { padding:5px 10px; border-bottom:1px solid var(--border); display:flex; gap:3px; align-items:center; }
+#sidebar .sb-nav button { background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--text-dim); border-radius:4px; padding:2px 6px; cursor:pointer; font-size:11px; line-height:1; transition:all .12s; flex-shrink:0; }
+#sidebar .sb-nav button:hover { color:var(--blue); border-color:var(--blue); background:rgba(88,166,255,.08); }
+#sidebar .sb-nav button:disabled { opacity:.3; cursor:default; }
+#sidebar .sb-nav button:disabled:hover { color:var(--text-dim); border-color:var(--border); background:rgba(255,255,255,.06); }
+/* Address bar: breadcrumb overlay on input */
+#sidebar .sb-addr { flex:1; min-width:0; position:relative; }
+#sidebar .sb-addr input { width:100%; background:var(--bg2); border:1px solid var(--border); color:transparent; padding:3px 7px; border-radius:4px; font-size:10px; font-family:Consolas,monospace; outline:none; }
+#sidebar .sb-addr input:focus { border-color:var(--blue); z-index:2; position:relative; color:var(--text); }
+#sidebar .sb-addr .sb-crumb { position:absolute; inset:0; display:flex; align-items:center; gap:2px; padding:0 7px; pointer-events:auto; overflow:hidden; white-space:nowrap; font-size:10.5px; background:var(--bg2); border-radius:4px; }
+#sidebar .sb-addr input:focus + .sb-crumb { display:none; }
+#sidebar .sb-addr .sb-crumb span { cursor:pointer; color:var(--blue); padding:1px 3px; border-radius:3px; flex-shrink:0; }
+#sidebar .sb-addr .sb-crumb span:hover { background:rgba(88,166,255,.15); }
+#sidebar .sb-addr .sb-crumb .sep { color:var(--muted); cursor:default; padding:1px 1px; flex-shrink:0; }
+#sidebar .sb-addr .sb-crumb .sep:hover { background:none; }
+#sidebar .sb-list { flex:1; overflow-y:auto; padding:4px 0; }
+#sidebar .sb-row {
+  display:flex; align-items:center; gap:8px; padding:5px 12px; cursor:pointer;
+  font-size:12px; color:var(--text-dim); user-select:none;
+}
+#sidebar .sb-row:hover { background:rgba(255,255,255,.04); color:var(--text); }
+#sidebar .sb-row .sb-icon { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+#sidebar .sb-row .sb-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#sidebar .sb-row .sb-size { color:var(--muted); font-size:10px; flex-shrink:0; }
+#sidebar .sb-row input[type="checkbox"] { cursor:pointer; accent-color:var(--blue); }
+#sidebar .sb-row.checked { background:rgba(88,166,255,.1); color:var(--blue); }
+#sidebar .sb-selected {
+  border-top:1px solid var(--border); padding:8px 12px; font-size:11px;
+  background:rgba(88,166,255,.04); max-height:120px; overflow-y:auto;
+}
+#sidebar .sb-selected .sb-sel-label { color:var(--muted); margin-bottom:4px; }
+#sidebar .sb-selected .sb-sel-item { color:var(--blue); font-family:Consolas,monospace; font-size:10px; }
+#sidebar .sb-empty { padding:30px 12px; text-align:center; color:var(--muted); font-size:11px; }
+
+/* Drag & drop overlay */
+.drop-overlay { position:absolute; inset:0; z-index:999; pointer-events:none; display:none; }
+.drop-overlay.show { display:flex; align-items:center; justify-content:center; background:rgba(88,166,255,.08); border:2px dashed var(--blue); border-radius:8px; }
+.drop-overlay .drop-label { color:var(--blue); font-size:14px; font-weight:600; pointer-events:none; text-shadow:0 0 20px rgba(88,166,255,.5); }
+#sidebar { position:relative; }
+#canvas { position:relative; }
+#overseer-pane {
+  background:linear-gradient(180deg, rgba(163,113,247,.08), rgba(22,27,34,.6));
+  border-bottom:1px solid rgba(163,113,247,.2);
+  padding:12px 22px;
+  flex-shrink:0; max-height:150px; overflow-y:auto;
+  backdrop-filter:blur(10px);
+}
+#overseer-pane h3 {
+  color:var(--purple); font-size:12px; font-weight:600; margin-bottom:8px;
+  display:flex; align-items:center; gap:10px; text-transform:uppercase; letter-spacing:.05em;
+}
+#overseer-pane h3 .count { color:var(--muted); font-weight:400; font-size:11px; text-transform:none; letter-spacing:0; }
+#overseer-rule {
+  font-family:'SF Mono','JetBrains Mono',Consolas,monospace;
+  font-size:11.5px; color:var(--text-dim); white-space:pre-wrap; line-height:1.65;
+}
+#overseer-pane.collapsed { max-height:36px; padding:8px 22px; overflow:hidden; }
+#overseer-pane.collapsed #overseer-rule { display:none; }
+
+/* Canvas: dot-grid background */
+#canvas {
+  flex:1; position:relative; overflow:hidden;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.035) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--bg);
+}
+
+.pane {
+  position:absolute;
+  background:rgba(7,9,13,.95);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  display:flex; flex-direction:column; overflow:hidden;
+  min-width:300px; min-height:200px;
+  box-shadow:var(--shadow-md);
+  transition:border-color .15s, box-shadow .15s;
+}
+.pane:hover { border-color:var(--border-strong); }
+.pane.active {
+  border-color:var(--blue);
+  box-shadow:0 0 0 1px var(--blue), 0 0 24px rgba(88,166,255,.2), var(--shadow-lg);
+  z-index:10;
+}
+.pane.dragging { opacity:.9; cursor:grabbing; }
+.pane-head {
+  padding:9px 12px;
+  background:linear-gradient(180deg, rgba(30,36,45,.95), rgba(22,27,34,.9));
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px;
+  flex-shrink:0; font-size:12px;
+  cursor:grab; user-select:none;
+}
+.pane-head:active { cursor:grabbing; }
+.pane-resize {
+  position:absolute; right:2px; bottom:2px; width:14px; height:14px;
+  cursor:nwse-resize;
+  background:linear-gradient(135deg, transparent 55%, var(--muted) 55%, var(--muted) 62%, transparent 62%, transparent 72%, var(--muted) 72%, var(--muted) 79%, transparent 79%);
+  opacity:.6;
+  border-bottom-right-radius:6px;
+}
+.pane-resize:hover { opacity:1; }
+.pane-head .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; transition:all .2s; }
+.pane-head .dot.running { background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 2s ease-in-out infinite; }
+.pane-head .dot.stopped { background:var(--orange); box-shadow:0 0 6px rgba(227,179,65,.5); }
+.pane-head .dot.done    { background:var(--muted); }
+.pane-head .dot.error   { background:var(--red); box-shadow:0 0 8px var(--red); }
+.pane.active-pane { border-color:var(--blue); box-shadow:0 0 0 2px rgba(88,166,255,.3), var(--shadow-lg); }
+.pane[data-status="running"] [data-resume] { display:none; }
+.pane[data-status="stopped"] [data-kill]   { display:none; }
+.pane[data-status="stopped"] .pane-body    { opacity:.7; }
+
+/* Lane filter: body class .view-{lane} chi hien pane thuoc lane do */
+body:not(.view-active)  .pane[data-lane="active"]  { display:none !important; }
+body:not(.view-pending) .pane[data-lane="pending"] { display:none !important; }
+body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
+
+/* Lane buttons trong pane head */
+.pane-head .lane-btns { display:flex; gap:2px; margin-left:6px; }
+.pane-head .lane-btns button {
+  width:22px; height:22px; padding:0; font-size:10px; font-weight:700;
+  border:1px solid var(--border); background:transparent; color:var(--text-dim);
+  border-radius:5px; cursor:pointer;
+}
+.pane-head .lane-btns button:hover { background:rgba(88,166,255,.15); color:var(--blue); }
+.pane-head .lane-btns button.on {
+  background:var(--blue); color:#fff; border-color:var(--blue);
+  box-shadow:0 0 8px rgba(88,166,255,.5);
+}
+
+/* Tab bar */
+#tab-bar {
+  display:flex; gap:4px; padding:8px 22px; background:var(--panel);
+  border-bottom:1px solid var(--border);
+}
+#tab-bar button {
+  padding:8px 18px; background:transparent; color:var(--text-dim);
+  border:1px solid var(--border); border-radius:8px; cursor:pointer;
+  font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px;
+  transition:all .15s;
+}
+#tab-bar button:hover { background:rgba(255,255,255,.04); color:var(--text); }
+#tab-bar button.active {
+  background:var(--accent); color:#fff; border-color:transparent;
+  box-shadow:0 4px 14px rgba(88,166,255,.3);
+}
+#tab-bar button .cnt {
+  background:rgba(0,0,0,.25); padding:1px 7px; border-radius:10px;
+  font-size:11px; min-width:20px; text-align:center;
+}
+#tab-bar button.active .cnt { background:rgba(255,255,255,.25); }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+
+.pane-head .nm {
+  font-weight:600; font-size:12.5px;
+  max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  cursor:text; padding:2px 6px; border-radius:4px;
+  transition:background .12s;
+}
+.pane-head .nm:hover { background:rgba(255,255,255,.06); }
+.pane-head .nm-input {
+  background:rgba(13,17,23,.9); border:1px solid var(--blue);
+  color:var(--text); font-size:12.5px; font-weight:600;
+  padding:2px 6px; border-radius:4px; outline:none; width:160px;
+  font-family:inherit;
+}
+.pane-head .folder {
+  color:var(--blue-dim);
+  font-family:'SF Mono','JetBrains Mono',Consolas,monospace;
+  font-size:10.5px;
+  flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  opacity:.75;
+}
+.pane-head .auto {
+  font-size:9px; font-weight:700; color:var(--orange);
+  background:rgba(227,179,65,.15); padding:2px 6px; border-radius:4px;
+  border:1px solid rgba(227,179,65,.3);
+  letter-spacing:.05em;
+}
+.pane-head button {
+  background:transparent; border:none; color:var(--muted);
+  cursor:pointer; padding:3px 7px; font-size:13px;
+  border-radius:4px; transition:all .12s;
+}
+.pane-head button:hover { color:var(--text); background:rgba(255,255,255,.08); }
+.pane-head button[data-remove]:hover { color:var(--red); background:rgba(248,81,73,.12); }
+.pane-body { flex:1; padding:6px; overflow:hidden; min-height:0; background:#000; }
+.pane-body .xterm-wrap { width:100%; height:100%; }
+
+/* Modal — modernized */
+.modal-bg {
+  position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(6px);
+  display:none; align-items:center; justify-content:center; z-index:500;
+  animation:fadeIn .15s;
+}
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+.modal-bg.show { display:flex; }
+.modal {
+  background:var(--panel-solid);
+  border:1px solid var(--border-strong);
+  border-radius:14px;
+  width:720px; max-height:84vh;
+  display:flex; flex-direction:column;
+  box-shadow:var(--shadow-lg), 0 0 0 1px rgba(255,255,255,.03);
+  overflow:hidden;
+}
+.modal-head {
+  padding:16px 22px;
+  border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+  background:linear-gradient(180deg, rgba(88,166,255,.05), transparent);
+}
+.modal-head h3 {
+  font-size:15px; font-weight:650;
+  background:var(--accent); -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.modal-paste {
+  padding:12px 22px; background:rgba(13,17,23,.5);
+  border-bottom:1px solid var(--border);
+  display:flex; gap:8px;
+}
+.modal-paste input {
+  flex:1;
+  background:rgba(7,9,13,.8);
+  border:1px solid var(--border);
+  color:var(--text); border-radius:7px;
+  padding:8px 12px; font-size:12.5px; outline:none;
+  font-family:'SF Mono',Consolas,monospace;
+}
+.modal-paste input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(88,166,255,.1); }
+.modal-path {
+  padding:10px 22px;
+  background:rgba(7,9,13,.6);
+  border-bottom:1px solid var(--border);
+  font-family:'SF Mono',Consolas,monospace; font-size:11.5px;
+  color:var(--muted); word-break:break-all;
+  display:flex; align-items:center; gap:8px;
+}
+.modal-body { flex:1; overflow-y:auto; padding:4px 0; }
+
+.modal-section-title {
+  padding:10px 22px 6px; font-size:10.5px; font-weight:600;
+  color:var(--muted); text-transform:uppercase; letter-spacing:.08em;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.modal-section-title .add-bm {
+  background:rgba(88,166,255,.12); border:1px solid rgba(88,166,255,.25);
+  color:var(--blue); font-size:10px; padding:3px 8px; border-radius:5px;
+  cursor:pointer; font-weight:600; letter-spacing:0;
+}
+.modal-section-title .add-bm:hover { background:rgba(88,166,255,.2); }
+
+.bm-item, .fs-item {
+  padding:9px 22px; cursor:pointer;
+  display:flex; align-items:center; gap:11px; font-size:13px;
+  transition:background .1s;
+  border-left:2px solid transparent;
+}
+.bm-item:hover, .fs-item:hover { background:rgba(88,166,255,.06); border-left-color:var(--blue); }
+.fs-item .proj-tag {
+  margin-left:auto; font-size:9.5px; font-weight:700;
+  color:var(--green); background:rgba(63,185,80,.12);
+  padding:2px 7px; border-radius:4px;
+  border:1px solid rgba(63,185,80,.25); letter-spacing:.05em;
+}
+.bm-item .bm-name { flex:1; font-weight:550; }
+.bm-item .bm-path { font-size:10.5px; color:var(--muted); font-family:'SF Mono',Consolas,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:280px; }
+.bm-item .bm-actions { display:flex; gap:3px; opacity:0; transition:opacity .15s; }
+.bm-item:hover .bm-actions { opacity:1; }
+.bm-item .bm-actions button {
+  background:transparent; border:none; color:var(--muted);
+  cursor:pointer; padding:3px 6px; border-radius:4px; font-size:11px;
+}
+.bm-item .bm-actions button:hover { color:var(--text); background:rgba(255,255,255,.08); }
+.bm-item .bm-actions button.del:hover { color:var(--red); background:rgba(248,81,73,.12); }
+
+.modal-foot {
+  padding:14px 22px;
+  border-top:1px solid var(--border);
+  display:flex; gap:8px; justify-content:flex-end;
+  background:rgba(13,17,23,.4);
+}
+
+/* Context menu */
+#ctx-menu {
+  position:fixed; z-index:800; background:var(--panel-solid);
+  border:1px solid var(--border-strong); border-radius:8px;
+  box-shadow:var(--shadow-lg); padding:5px 0; min-width:200px;
+  display:none; font-size:12px; color:var(--text);
+}
+#ctx-menu.show { display:block; }
+#ctx-menu .ctx-item {
+  padding:7px 14px; cursor:pointer; display:flex; align-items:center; gap:10px;
+  white-space:nowrap;
+}
+#ctx-menu .ctx-item:hover { background:rgba(88,166,255,.15); color:var(--blue); }
+#ctx-menu .ctx-item.danger:hover { background:rgba(248,81,73,.15); color:var(--red); }
+#ctx-menu .ctx-item .ctx-icon { width:16px; text-align:center; }
+#ctx-menu .ctx-sep { height:1px; background:var(--border); margin:4px 0; }
+
+/* Sidebar inline rename input */
+#sidebar .sb-row input.sb-rename {
+  flex:1; background:var(--bg2); border:1px solid var(--blue);
+  color:var(--text); padding:2px 6px; border-radius:4px; font-size:12px;
+  font-family:inherit; outline:none;
+}
+
+/* Folder popup */
+#folder-pop {
+  position:fixed; z-index:500; min-width:440px; max-width:640px;
+  background:var(--panel-solid); border:1px solid var(--border-strong);
+  border-radius:12px; box-shadow:var(--shadow-lg); padding:14px 16px;
+  display:none; color:var(--text); font-size:12.5px;
+}
+#folder-pop.show { display:block; }
+#folder-pop .fp-path {
+  font-family:Consolas,monospace; font-size:11px; color:var(--text-dim);
+  background:rgba(0,0,0,.3); padding:8px 10px; border-radius:6px;
+  word-break:break-all; margin-bottom:10px; user-select:all;
+}
+#folder-pop .fp-crumb { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:12px; }
+#folder-pop .fp-crumb span {
+  padding:4px 9px; background:rgba(88,166,255,.08); border:1px solid rgba(88,166,255,.2);
+  border-radius:5px; color:var(--blue); cursor:pointer; font-size:11px;
+  transition:all .1s;
+}
+#folder-pop .fp-crumb span:hover { background:rgba(88,166,255,.2); }
+#folder-pop .fp-crumb .sep { color:var(--muted); cursor:default; background:none; border:none; padding:4px 2px; }
+#folder-pop .fp-crumb .sep:hover { background:none; }
+#folder-pop .fp-acts { display:flex; gap:8px; flex-wrap:wrap; }
+#folder-pop .fp-acts button {
+  flex:1; min-width:100px; padding:9px 12px; border-radius:7px;
+  background:rgba(255,255,255,.04); border:1px solid var(--border);
+  color:var(--text); cursor:pointer; font-size:12px; font-weight:500;
+  transition:all .1s;
+}
+#folder-pop .fp-acts button:hover {
+  background:var(--accent); color:#fff; border-color:transparent;
+  transform:translateY(-1px);
+}
+
+#toast {
+  position:fixed; bottom:28px; left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--panel-solid);
+  border:1px solid var(--border-strong);
+  padding:11px 20px; border-radius:10px; font-size:13px;
+  transition:transform .25s cubic-bezier(.22,1.2,.36,1);
+  z-index:999;
+  box-shadow:var(--shadow-lg);
+}
+#toast.show { transform:translateX(-50%) translateY(0); }
+
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.08); border-radius:4px; border:2px solid transparent; background-clip:padding-box; }
+::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.15); background-clip:padding-box; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#x1F916; Claude Hub v4 <span id="hdr-count">0 sessions</span></h1>
+  <div id="ws-badge">&#x25CF; ...</div>
+</header>
+
+<div id="folder-pop"></div>
+<div id="ctx-menu"></div>
+
+<div id="tab-bar">
+  <button data-tab="active"  class="active">&#x1F525; Active  <span class="cnt" id="cnt-active">0</span></button>
+  <button data-tab="pending">&#x23F8; Pending <span class="cnt" id="cnt-pending">0</span></button>
+  <button data-tab="done">&#x2705; Done     <span class="cnt" id="cnt-done">0</span></button>
+</div>
+
+<div id="bar">
+  <input id="inp-name" type="text" placeholder="Ten task (tu trong = auto)...">
+  <button id="btn-cwd">&#x1F4C1; (home)</button>
+  <label class="chk"><input type="checkbox" id="chk-auto" checked> &#x26A1; Auto-accept</label>
+  <button class="btn btn-primary" onclick="newSession()">+ New Session</button>
+  <button class="btn btn-primary" onclick="resumeAll()" title="Khoi dong lai moi session da stopped">&#x25B6; Resume All</button>
+  <button class="btn btn-ghost" onclick="killAll()">Stop All</button>
+  <div style="flex:1"></div>
+  <div class="layout-sel" id="layout-sel">
+    <button data-layout="tile" class="active" title="Tile deu">&#x25A6; Tile</button>
+    <button data-layout="cols" title="Chia cot">&#x2590;&#x2590; Cols</button>
+    <button data-layout="rows" title="Chia hang">&#x2630; Rows</button>
+    <button data-layout="cascade" title="Xep chong">&#x25A3; Cascade</button>
+    <button data-layout="focus" title="Full 1 cai">&#x26F6; Focus</button>
+  </div>
+  <button class="btn btn-ghost" onclick="resetLayout()" title="Reset vi tri">&#x27F3;</button>
+  <button class="btn btn-purple" onclick="toggleOverseer()">&#x1F9E0; Overseer</button>
+</div>
+
+<div id="main">
+  <div id="overseer-pane">
+    <h3>&#x1F9E0; Overseer <span class="count" id="overseer-time"></span></h3>
+    <div id="overseer-rule">Dang tai...</div>
+  </div>
+  <div id="workspace">
+    <aside id="sidebar">
+      <div class="sb-toggle" onclick="toggleSidebar()" title="Thu/mo sidebar">&#x2630;</div>
+      <div class="sb-inner">
+        <div class="sb-header">
+          <span class="sb-title">&#x1F4C1; Explorer</span>
+          <button onclick="sbRefresh()" title="Refresh" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px">&#x27F3;</button>
+        </div>
+        <div class="sb-nav" id="sb-nav">
+          <button id="sb-back" onclick="sbGoBack()" title="Back (Alt+Left)" disabled>&#x2190;</button>
+          <button id="sb-fwd" onclick="sbGoForward()" title="Forward (Alt+Right)" disabled>&#x2192;</button>
+          <button onclick="sbGoHome()" title="Home">&#x1F3E0;</button>
+          <button onclick="sbBrowse('Drives')" title="Drives">&#x1F4BF;</button>
+          <div class="sb-addr">
+            <input id="sb-path-input" placeholder="Path..." onkeydown="if(event.key==='Enter'){sbBrowse(this.value.trim());this.blur();}" onfocus="this.select()" />
+            <div class="sb-crumb" id="sb-crumb"></div>
+          </div>
+        </div>
+        <div class="sb-list" id="sb-list">
+          <div class="sb-empty">Chua chon session</div>
+        </div>
+        <div class="drop-overlay" id="sb-drop-overlay"><span class="drop-label">&#x1F4CE; Tha file vao day de attach</span></div>
+        <div class="sb-selected" id="sb-selected" style="display:none">
+          <div class="sb-sel-label">&#x1F4CE; Da attach:</div>
+          <div id="sb-sel-items"></div>
+        </div>
+      </div>
+      <div class="sb-resize-handle" id="sb-resize-handle"></div>
+    </aside>
+    <div id="canvas">
+      <div class="drop-overlay" id="canvas-drop-overlay"><span class="drop-label">&#x1F4E5; Tha file vao terminal</span></div>
+      <div id="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center">
+        <div>
+          <h2 style="color:var(--text);margin-bottom:6px;font-size:18px">Chua co session nao</h2>
+          <p>Chon folder project va nhan "+ New Session"</p>
+          <p style="font-size:11px;margin-top:12px;color:var(--muted)">Meo: keo header de di chuyen, keo goc duoi-phai de resize · Click vao pane de sidebar hien file explorer</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Folder picker modal -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>&#x1F4C1; Chon thu muc lam viec</h3>
+      <button class="btn btn-ghost" onclick="closeModal()" style="padding:5px 11px">&times;</button>
+    </div>
+    <div class="modal-paste">
+      <input id="inp-paste" type="text" placeholder="Paste duong dan vao day (vd: C:\Users\YourName\Projects\myapp)..." />
+      <button class="btn btn-primary" onclick="goToPasted()">&#x2192; Go</button>
+    </div>
+    <div class="modal-path" id="modal-path">...</div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="browseFs('Drives')">&#x1F4BB; Drives</button>
+      <button class="btn btn-ghost" onclick="goUp()">&#x2B06; Up</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-primary" onclick="pickCurrent()">&#x2713; Chon thu muc nay</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+var state = {};      // sessionId -> session JSON
+var panes = {};      // sessionId -> { term, ws, fit, el }
+var ctrlWs, retryCount = 0;
+var selectedCwd = '';
+var currentBrowse = null;
+
+// ── Control WebSocket ─────────────────────────────────────────────
+function connectCtrl() {
+  ctrlWs = new WebSocket('ws://' + location.host + '/');
+  ctrlWs.onopen = function() {
+    var b = document.getElementById('ws-badge');
+    b.textContent = 'Da ket noi';
+    b.className = 'ok';
+    retryCount = 0;
+  };
+  ctrlWs.onclose = function() {
+    var b = document.getElementById('ws-badge');
+    b.textContent = 'Mat ket noi...';
+    b.className = '';
+    setTimeout(connectCtrl, Math.min(5000, 1000 * ++retryCount));
+  };
+  ctrlWs.onmessage = function(e) {
+    var msg = JSON.parse(e.data);
+    if (msg.type === 'init') {
+      msg.sessions.forEach(function(s) { state[s.id] = s; });
+      rebuildGrid();
+      if (msg.overseer) document.getElementById('overseer-rule').textContent = msg.overseer.rule;
+    } else if (msg.type === 'session_created') {
+      state[msg.session.id] = msg.session;
+      addPane(msg.session);
+    } else if (msg.type === 'session_update') {
+      state[msg.session.id] = msg.session;
+      updatePaneHead(msg.session.id);
+    } else if (msg.type === 'session_removed') {
+      delete state[msg.id];
+      removePane(msg.id);
+    } else if (msg.type === 'overseer_rule') {
+      document.getElementById('overseer-rule').textContent = msg.rule;
+      document.getElementById('overseer-time').textContent = new Date().toLocaleTimeString('vi-VN');
+    }
+    document.getElementById('hdr-count').textContent = Object.keys(state).length + ' sessions';
+    try { updateTabCounts(); } catch(_){}
+  };
+}
+
+// ── Pane management (free-form draggable) ───────────────────────
+var zIndexTop = 10;
+var currentLayout = localStorage.getItem('layout') || 'tile';
+var savedPositions = JSON.parse(localStorage.getItem('panePositions') || '{}');
+
+function rebuildGrid() {
+  Object.keys(panes).forEach(removePane);
+  Object.values(state).forEach(addPane);
+  updateEmpty();
+}
+
+// Paste from clipboard: image (save to file, send @path) or text
+function pasteFromClipboard(ws, sid) {
+  if (!navigator.clipboard) { toast('Clipboard API khong kha dung'); return; }
+  // Try read clipboard items (image + text)
+  if (navigator.clipboard.read) {
+    navigator.clipboard.read().then(function(clipItems) {
+      for (var ci = 0; ci < clipItems.length; ci++) {
+        var types = clipItems[ci].types;
+        for (var ti = 0; ti < types.length; ti++) {
+          if (types[ti].indexOf('image') !== -1) {
+            clipItems[ci].getType(types[ti]).then(function(blob) {
+              var reader = new FileReader();
+              reader.onload = function() {
+                var s = state[sid];
+                fetch('/api/paste-image', {
+                  method:'POST', headers:{'Content-Type':'application/json'},
+                  body: JSON.stringify({ data: reader.result, cwd: s ? s.cwd : '' })
+                }).then(function(r){return r.json();}).then(function(j) {
+                  if (j.ok && ws.readyState === 1) { ws.send('@' + j.path + ' '); toast('Da paste hinh: ' + j.name); }
+                  else if (!j.ok) toast('Loi: ' + (j.error||''));
+                });
+              };
+              reader.readAsDataURL(blob);
+            });
+            return;
+          }
+        }
+      }
+      // No image found, paste text
+      pasteTextFromClipboard(ws);
+    }).catch(function() { pasteTextFromClipboard(ws); });
+  } else {
+    pasteTextFromClipboard(ws);
+  }
+}
+function pasteTextFromClipboard(ws) {
+  if (!navigator.clipboard || !navigator.clipboard.readText) return;
+  navigator.clipboard.readText().then(function(text) {
+    if (!text) return;
+    var CR = String.fromCharCode(13), LF = String.fromCharCode(10);
+    text = text.split(CR + LF).join(LF).split(CR).join(LF);
+    if (ws.readyState === 1) ws.send(text);
+  }).catch(function(err) { toast('Paste loi: ' + err.message); });
+}
+
+function addPane(s) {
+  hideEmpty();
+  var canvas = document.getElementById('canvas');
+  var el = document.createElement('div');
+  el.className = 'pane';
+  el.id = 'pane-' + s.id;
+  el.dataset.status = s.status;
+  el.dataset.lane = s.lane || 'active';
+  var lane = s.lane || 'active';
+  el.innerHTML =
+    '<div class="pane-head">' +
+      '<span class="dot ' + s.status + '"></span>' +
+      '<span class="nm">' + esc(s.name) + '</span>' +
+      (s.autoAccept ? '<span class="auto">AUTO</span>' : '') +
+      '<span class="folder">' + esc(s.cwdShort || '?') + '</span>' +
+      '<span class="lane-btns">' +
+        '<button title="Chuyen Active"  data-lane-set="active"  data-sid="' + s.id + '" class="' + (lane==='active'?'on':'') + '">A</button>' +
+        '<button title="Chuyen Pending" data-lane-set="pending" data-sid="' + s.id + '" class="' + (lane==='pending'?'on':'') + '">P</button>' +
+        '<button title="Chuyen Done"    data-lane-set="done"    data-sid="' + s.id + '" class="' + (lane==='done'?'on':'') + '">D</button>' +
+      '</span>' +
+      '<button title="Mo folder" data-folder="' + s.id + '">&#x1F4C1;</button>' +
+      '<button title="Resume" data-resume="' + s.id + '">&#x25B6;</button>' +
+      '<button title="Stop (giu session)" data-kill="' + s.id + '">&#x25A0;</button>' +
+      '<button title="Xoa han" data-remove="' + s.id + '">&times;</button>' +
+    '</div>' +
+    '<div class="pane-body"><div class="xterm-wrap" id="term-' + s.id + '"></div></div>' +
+    '<div class="pane-resize"></div>';
+  canvas.appendChild(el);
+
+  // Restore position hoac auto-layout
+  var pos = savedPositions[s.id];
+  if (pos) {
+    applyPos(el, pos);
+  } else {
+    // Vi tri mac dinh: cascade
+    var idx = Object.keys(panes).length;
+    applyPos(el, { x: 20 + idx * 30, y: 20 + idx * 30, w: 560, h: 340 });
+  }
+
+  // xterm
+  var term = new Terminal({
+    fontFamily: 'Consolas, "Courier New", monospace',
+    fontSize: 12,
+    theme: { background:'#000000', foreground:'#e6edf3', cursor:'#58a6ff' },
+    cursorBlink: true, scrollback: 5000, allowProposedApi: true,
+  });
+  var fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(document.getElementById('term-' + s.id));
+
+  // Intercept keyboard: Ctrl+C (copy selection), Ctrl+V (paste), Shift+Insert (paste)
+  term.attachCustomKeyEventHandler(function(ev) {
+    if (ev.type !== 'keydown') return true;
+    // Ctrl+C: neu co selection → copy text, nguoc lai gui SIGINT binh thuong
+    if (ev.ctrlKey && (ev.key === 'c' || ev.key === 'C') && !ev.shiftKey) {
+      var sel = term.getSelection();
+      if (sel && sel.length > 0) {
+        ev.preventDefault();
+        navigator.clipboard.writeText(sel).then(function() { toast('Da copy ' + sel.length + ' ky tu'); term.clearSelection(); });
+        return false;
+      }
+      return true; // khong co selection → gui Ctrl+C (SIGINT) binh thuong
+    }
+    // Shift+Enter: xuong dong trong Claude CLI
+    if (ev.shiftKey && ev.key === 'Enter') {
+      ev.preventDefault();
+      // Claude CLI TUI: Shift+Enter = ESC then Enter hoac CSI u sequence
+      if (ws.readyState === 1) ws.send(String.fromCharCode(27) + '[13;2u');
+      return false;
+    }
+    // Ctrl+V / Shift+Insert: paste (text + image)
+    var isPaste = (ev.ctrlKey && (ev.key === 'v' || ev.key === 'V')) ||
+                  (ev.shiftKey && ev.key === 'Insert');
+    if (!isPaste) return true;
+    ev.preventDefault();
+    // Try paste image first, then text
+    pasteFromClipboard(ws, s.id);
+    return false;
+  });
+
+  // Right-click paste (text + image)
+  var termEl = document.getElementById('term-' + s.id);
+  termEl.addEventListener('contextmenu', function(ev) {
+    ev.preventDefault();
+    pasteFromClipboard(ws, s.id);
+  });
+
+  // Middle-click paste
+  termEl.addEventListener('auxclick', function(ev) {
+    if (ev.button !== 1) return;
+    ev.preventDefault();
+    pasteFromClipboard(ws, s.id);
+  });
+
+  // Drag file/image vao terminal → gui @path
+  termEl.addEventListener('dragover', function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
+  termEl.addEventListener('drop', function(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    var files = ev.dataTransfer.files;
+    if (!files || !files.length) return;
+    for (var fi = 0; fi < files.length; fi++) {
+      var fp = files[fi].path || files[fi].name;
+      if (fp && ws.readyState === 1) {
+        var sObj = state[s.id];
+        var rel = relOrAbs(fp, sObj ? sObj.cwd : '');
+        var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
+        ws.send('@' + ref + ' ');
+      }
+    }
+    toast('Da gui ' + files.length + ' file vao terminal');
+  });
+
+  var ws = new WebSocket('ws://' + location.host + '/term/' + s.id);
+  ws.binaryType = 'arraybuffer';
+  ws.onmessage = function(e) {
+    if (e.data instanceof ArrayBuffer) term.write(new Uint8Array(e.data));
+    else term.write(e.data);
+  };
+  ws.onopen = function() {
+    setTimeout(function() {
+      try { fit.fit(); ws.send(JSON.stringify({ type:'resize', cols:term.cols, rows:term.rows })); } catch(_){}
+    }, 100);
+  };
+  term.onData(function(d) { if (ws.readyState === 1) ws.send(d); });
+  term.onResize(function(sz) {
+    if (ws.readyState === 1) ws.send(JSON.stringify({ type:'resize', cols:sz.cols, rows:sz.rows }));
+  });
+
+  panes[s.id] = { term: term, ws: ws, fit: fit, el: el };
+
+  // Drag
+  makeDraggable(el, s.id);
+  makeResizable(el, s.id);
+
+  setTimeout(function() { try { fit.fit(); } catch(_){} }, 200);
+
+  // Debounced preset layout — tranh thrash khi bulk load nhieu session
+  if (!pos) scheduleRelayout();
+}
+
+var _relayoutTimer = null;
+function scheduleRelayout() {
+  if (_relayoutTimer) clearTimeout(_relayoutTimer);
+  _relayoutTimer = setTimeout(function() {
+    _relayoutTimer = null;
+    applyPresetLayout();
+  }, 80);
+}
+
+function applyPos(el, p) {
+  el.style.left = p.x + 'px';
+  el.style.top = p.y + 'px';
+  el.style.width = p.w + 'px';
+  el.style.height = p.h + 'px';
+}
+
+function savePos(sid) {
+  var p = panes[sid];
+  if (!p) return;
+  savedPositions[sid] = {
+    x: parseInt(p.el.style.left), y: parseInt(p.el.style.top),
+    w: parseInt(p.el.style.width), h: parseInt(p.el.style.height),
+  };
+  localStorage.setItem('panePositions', JSON.stringify(savedPositions));
+}
+
+function removePane(sid) {
+  var p = panes[sid];
+  if (p) {
+    try { p.ws.close(); } catch(_){}
+    try { p.term.dispose(); } catch(_){}
+    try { p.el.remove(); } catch(_){}
+    delete panes[sid];
+  }
+  delete savedPositions[sid];
+  localStorage.setItem('panePositions', JSON.stringify(savedPositions));
+  updateEmpty();
+}
+
+function updatePaneHead(sid) {
+  var s = state[sid], p = panes[sid];
+  if (!s || !p) return;
+  var dot = p.el.querySelector('.dot');
+  if (dot) dot.className = 'dot ' + s.status;
+  p.el.dataset.status = s.status;
+  var prevLane = p.el.dataset.lane;
+  p.el.dataset.lane = s.lane || 'active';
+  if (prevLane !== p.el.dataset.lane) scheduleRelayout();
+  // Update lane button highlight
+  var btns = p.el.querySelectorAll('[data-lane-set]');
+  btns.forEach(function(b) {
+    if (b.dataset.laneSet === (s.lane || 'active')) b.classList.add('on');
+    else b.classList.remove('on');
+  });
+  updateTabCounts();
+}
+
+function updateTabCounts() {
+  var c = { active:0, pending:0, done:0 };
+  Object.values(state).forEach(function(s) { c[s.lane || 'active']++; });
+  document.getElementById('cnt-active').textContent  = c.active;
+  document.getElementById('cnt-pending').textContent = c.pending;
+  document.getElementById('cnt-done').textContent    = c.done;
+}
+
+// Tab switcher: swap body class → CSS filter pane theo lane
+var currentTab = localStorage.getItem('currentTab') || 'active';
+function switchTab(tab) {
+  currentTab = tab;
+  localStorage.setItem('currentTab', tab);
+  document.body.classList.remove('view-active','view-pending','view-done');
+  document.body.classList.add('view-' + tab);
+  document.querySelectorAll('#tab-bar button').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  // Re-layout + re-fit cho lane moi
+  setTimeout(function() {
+    applyPresetLayout();
+    Object.values(panes).forEach(function(p) {
+      try { if (p.el.offsetParent) p.fit.fit(); } catch(_){}
+    });
+  }, 50);
+}
+document.getElementById('tab-bar').addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-tab]');
+  if (btn) switchTab(btn.dataset.tab);
+});
+switchTab(currentTab);
+
+function updateEmpty() {
+  var existing = document.getElementById('empty');
+  if (!Object.keys(state).length) {
+    if (!existing) {
+      var d = document.createElement('div');
+      d.id = 'empty';
+      d.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center';
+      d.innerHTML = '<div><h2 style="color:var(--text);margin-bottom:6px;font-size:18px">Chua co session nao</h2><p>Chon folder project va nhan "+ New Session"</p><p style="font-size:11px;margin-top:12px;color:var(--muted)">Meo: keo header de di chuyen, keo goc duoi-phai de resize</p></div>';
+      document.getElementById('canvas').appendChild(d);
+    }
+  } else if (existing) existing.remove();
+}
+function hideEmpty() { var e = document.getElementById('empty'); if (e) e.remove(); }
+
+// ── Drag & Resize ────────────────────────────────────────────────
+function makeDraggable(el, sid) {
+  var head = el.querySelector('.pane-head');
+  head.addEventListener('mousedown', function(e) {
+    if (e.target.closest('button')) return;
+    focusPane(sid);
+    var startX = e.clientX, startY = e.clientY;
+    var origX = parseInt(el.style.left), origY = parseInt(el.style.top);
+    el.classList.add('dragging');
+    function onMove(ev) {
+      el.style.left = Math.max(0, origX + ev.clientX - startX) + 'px';
+      el.style.top  = Math.max(0, origY + ev.clientY - startY) + 'px';
+    }
+    function onUp() {
+      el.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      savePos(sid);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+}
+
+function makeResizable(el, sid) {
+  var handle = el.querySelector('.pane-resize');
+  handle.addEventListener('mousedown', function(e) {
+    focusPane(sid);
+    var startX = e.clientX, startY = e.clientY;
+    var origW = parseInt(el.style.width), origH = parseInt(el.style.height);
+    function onMove(ev) {
+      el.style.width  = Math.max(280, origW + ev.clientX - startX) + 'px';
+      el.style.height = Math.max(180, origH + ev.clientY - startY) + 'px';
+      try { panes[sid].fit.fit(); } catch(_){}
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      savePos(sid);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+    e.stopPropagation();
+  });
+}
+
+function focusPane(sid) {
+  var p = panes[sid];
+  if (!p) return;
+  document.querySelectorAll('.pane.active').forEach(function(x) { x.classList.remove('active'); });
+  p.el.classList.add('active');
+  p.el.style.zIndex = ++zIndexTop;
+  try { p.term.focus(); } catch(_){}
+}
+
+// ── Preset layouts ───────────────────────────────────────────────
+function applyPresetLayout() {
+  // Chi layout pane thuoc lane hien tai (visible)
+  var ids = Object.keys(panes).filter(function(sid) {
+    var s = state[sid];
+    return s && (s.lane || 'active') === currentTab;
+  });
+  if (!ids.length) return;
+  var canvas = document.getElementById('canvas');
+  var W = canvas.clientWidth, H = canvas.clientHeight;
+  var n = ids.length;
+
+  if (currentLayout === 'tile') {
+    var cols = Math.ceil(Math.sqrt(n));
+    var rows = Math.ceil(n / cols);
+    var w = Math.floor(W / cols) - 8;
+    var h = Math.floor(H / rows) - 8;
+    ids.forEach(function(sid, i) {
+      var r = Math.floor(i / cols), c = i % cols;
+      applyPos(panes[sid].el, { x: c * (w + 8) + 4, y: r * (h + 8) + 4, w: w, h: h });
+    });
+  } else if (currentLayout === 'cols') {
+    var w = Math.floor(W / n) - 8;
+    ids.forEach(function(sid, i) {
+      applyPos(panes[sid].el, { x: i * (w + 8) + 4, y: 4, w: w, h: H - 12 });
+    });
+  } else if (currentLayout === 'rows') {
+    var h = Math.floor(H / n) - 8;
+    ids.forEach(function(sid, i) {
+      applyPos(panes[sid].el, { x: 4, y: i * (h + 8) + 4, w: W - 12, h: h });
+    });
+  } else if (currentLayout === 'cascade') {
+    ids.forEach(function(sid, i) {
+      applyPos(panes[sid].el, { x: 20 + i * 34, y: 20 + i * 34, w: Math.min(700, W - 100), h: Math.min(450, H - 100) });
+    });
+  } else if (currentLayout === 'focus') {
+    // 1 pane full, cac pane khac minimize ve goc
+    ids.forEach(function(sid, i) {
+      if (i === 0) applyPos(panes[sid].el, { x: 4, y: 4, w: W - 12, h: H - 12 });
+      else applyPos(panes[sid].el, { x: 10 + (i-1) * 310, y: H - 50, w: 300, h: 44 });
+    });
+  }
+
+  // Save all positions
+  ids.forEach(function(sid) { savePos(sid); });
+  setTimeout(function() {
+    Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
+  }, 50);
+}
+
+function resetLayout() {
+  // Chi reset vi tri cua pane thuoc lane hien tai, giu cac lane khac
+  Object.keys(panes).forEach(function(sid) {
+    var s = state[sid];
+    if (s && (s.lane || 'active') === currentTab) delete savedPositions[sid];
+  });
+  localStorage.setItem('panePositions', JSON.stringify(savedPositions));
+  applyPresetLayout();
+}
+
+// Set initial active button
+setTimeout(function() {
+  document.querySelectorAll('#layout-sel button').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.layout === currentLayout);
+  });
+}, 0);
+
+document.getElementById('layout-sel').addEventListener('click', function(e) {
+  var btn = e.target.closest('button[data-layout]');
+  if (!btn) return;
+  currentLayout = btn.dataset.layout;
+  localStorage.setItem('layout', currentLayout);
+  document.querySelectorAll('#layout-sel button').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  applyPresetLayout();
+});
+
+document.getElementById('canvas').addEventListener('click', function(e) {
+  var killBtn = e.target.closest('[data-kill]');
+  if (killBtn) { fetch('/api/sessions/' + killBtn.dataset.kill + '/kill', { method:'POST' }); return; }
+  var resBtn = e.target.closest('[data-resume]');
+  if (resBtn) { fetch('/api/sessions/' + resBtn.dataset.resume + '/resume', { method:'POST' }); return; }
+  var laneBtn = e.target.closest('[data-lane-set]');
+  if (laneBtn) {
+    fetch('/api/sessions/' + laneBtn.dataset.sid + '/lane', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ lane: laneBtn.dataset.laneSet }),
+    });
+    return;
+  }
+  var folderBtn = e.target.closest('[data-folder]');
+  if (folderBtn) { showFolderPopup(folderBtn.dataset.folder, folderBtn); return; }
+  var rmBtn = e.target.closest('[data-remove]');
+  if (rmBtn) {
+    if (!confirm('Xoa han session nay? (History se mat)')) return;
+    fetch('/api/sessions/' + rmBtn.dataset.remove, { method:'DELETE' }); return;
+  }
+  var nm = e.target.closest('.nm');
+  if (nm && !nm.querySelector('input')) {
+    e.stopPropagation();
+    var sid = nm.closest('.pane').id.replace('pane-', '');
+    startInlineRename(nm, sid);
+    return;
+  }
+  var pane = e.target.closest('.pane');
+  if (pane) focusPane(pane.id.replace('pane-', ''));
+});
+
+function startInlineRename(nmEl, sid) {
+  var oldName = state[sid] ? state[sid].name : '';
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'nm-input';
+  input.value = oldName;
+  nmEl.innerHTML = '';
+  nmEl.appendChild(input);
+  input.focus();
+  input.select();
+  function commit() {
+    var newName = input.value.trim() || oldName;
+    nmEl.textContent = newName;
+    if (newName !== oldName) {
+      fetch('/api/sessions/' + sid + '/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+    }
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { nmEl.textContent = oldName; }
+  });
+  input.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+}
+
+window.addEventListener('resize', function() {
+  Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
+});
+
+function toggleOverseer() {
+  document.getElementById('overseer-pane').classList.toggle('collapsed');
+  setTimeout(function() {
+    Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
+  }, 100);
+}
+
+// ── Folder picker ────────────────────────────────────────────────
+document.getElementById('btn-cwd').addEventListener('click', openModal);
+function openModal() {
+  document.getElementById('modal-bg').classList.add('show');
+  browseFs(selectedCwd || '');
+  setTimeout(function() { document.getElementById('inp-paste').focus(); }, 100);
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('show'); }
+
+function goToPasted() {
+  var p = document.getElementById('inp-paste').value.trim();
+  if (!p) return;
+  // Clean quotes if copied from Explorer
+  p = p.replace(/^["']|["']$/g, '');
+  browseFs(p);
+}
+document.getElementById('inp-paste').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') goToPasted();
+});
+document.getElementById('inp-paste').addEventListener('paste', function(e) {
+  setTimeout(goToPasted, 50);
+});
+
+function browseFs(p) {
+  var url = '/api/fs' + (p ? '?path=' + encodeURIComponent(p) : '');
+  fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { toast('Loi: ' + data.error); return; }
+    currentBrowse = data;
+    document.getElementById('modal-path').textContent = '📍 ' + data.cwd;
+    renderFsBody(data);
+  });
+}
+
+function renderFsBody(data) {
+  Promise.all([
+    fetch('/api/bookmarks').then(function(r) { return r.json(); }),
+    fetch('/api/recent').then(function(r) { return r.json(); }),
+  ]).then(function(arr) {
+    var bookmarks = arr[0] || [];
+    var recent = arr[1] || [];
+    var html = '';
+
+    // Bookmarks section (only at drive level or empty)
+    html += '<div class="modal-section-title">&#x2B50; Bookmarks <button class="add-bm" onclick="addBookmark()">+ Them</button></div>';
+    if (bookmarks.length) {
+      bookmarks.forEach(function(bm) {
+        html += '<div class="bm-item" data-bm-path="' + esc(bm.path) + '">' +
+          '&#x2B50; <div style="flex:1;min-width:0">' +
+            '<div class="bm-name">' + esc(bm.name) + '</div>' +
+            '<div class="bm-path">' + esc(bm.path) + '</div>' +
+          '</div>' +
+          '<div class="bm-actions">' +
+            '<button onclick="editBookmark(event,&#39;'+bm.id+'&#39;)">&#x270E;</button>' +
+            '<button class="del" onclick="deleteBookmark(event,&#39;'+bm.id+'&#39;)">&times;</button>' +
+          '</div>' +
+        '</div>';
+      });
+    } else {
+      html += '<div style="padding:10px 22px;color:var(--muted);font-size:11.5px;font-style:italic">Chua co bookmark. Nhan "+ Them" de luu thu muc hay dung.</div>';
+    }
+
+    // Recent
+    if (recent.length) {
+      html += '<div class="modal-section-title">&#x23F1; Recent</div>';
+      recent.forEach(function(p) {
+        var name = p.split(/[\\/]/).filter(Boolean).pop() || p;
+        html += '<div class="bm-item" data-bm-path="' + esc(p) + '">' +
+          '&#x23F1; <div style="flex:1;min-width:0">' +
+            '<div class="bm-name">' + esc(name) + '</div>' +
+            '<div class="bm-path">' + esc(p) + '</div>' +
+          '</div></div>';
+      });
+    }
+
+    // Folders in current dir
+    if (data.items && data.items.length) {
+      html += '<div class="modal-section-title">&#x1F4C2; Thu muc trong ' + esc(data.cwd.split(/[\\/]/).pop() || data.cwd) + '</div>';
+      data.items.forEach(function(it) {
+        var tag = it.isProject ? '<span class="proj-tag">PROJECT</span>' : '';
+        html += '<div class="fs-item" data-path="' + esc(it.path) + '">&#x1F4C1; ' + esc(it.name) + tag + '</div>';
+      });
+    }
+
+    document.getElementById('modal-body').innerHTML = html;
+  });
+}
+
+function goUp() {
+  if (currentBrowse && currentBrowse.parent) browseFs(currentBrowse.parent);
+  else browseFs('Drives');
+}
+function pickCurrent() {
+  if (!currentBrowse || currentBrowse.cwd === 'Drives') { toast('Chon 1 folder cu the'); return; }
+  selectedCwd = currentBrowse.cwd;
+  var shortName = selectedCwd.split(/[\\/]/).filter(Boolean).pop() || selectedCwd;
+  document.getElementById('btn-cwd').innerHTML = '📁 <strong>' + esc(shortName) + '</strong>';
+  document.getElementById('btn-cwd').title = selectedCwd;
+  closeModal();
+  toast('Da chon: ' + shortName);
+}
+document.getElementById('modal-body').addEventListener('click', function(e) {
+  if (e.target.closest('.bm-actions')) return;
+  var bm = e.target.closest('[data-bm-path]');
+  if (bm) { browseFs(bm.dataset.bmPath); return; }
+  var item = e.target.closest('.fs-item');
+  if (item) browseFs(item.dataset.path);
+});
+
+function addBookmark() {
+  if (!currentBrowse || currentBrowse.cwd === 'Drives') { toast('Browse toi folder muon bookmark truoc'); return; }
+  var name = prompt('Ten bookmark:', currentBrowse.cwd.split(/[\\/]/).filter(Boolean).pop());
+  if (!name) return;
+  fetch('/api/bookmarks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, path: currentBrowse.cwd }),
+  }).then(function() { renderFsBody(currentBrowse); toast('Da them bookmark'); });
+}
+function editBookmark(e, id) {
+  e.stopPropagation();
+  var name = prompt('Ten moi:');
+  if (!name) return;
+  fetch('/api/bookmarks/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name }),
+  }).then(function() { renderFsBody(currentBrowse); toast('Da sua'); });
+}
+function deleteBookmark(e, id) {
+  e.stopPropagation();
+  if (!confirm('Xoa bookmark?')) return;
+  fetch('/api/bookmarks/' + id, { method: 'DELETE' })
+    .then(function() { renderFsBody(currentBrowse); toast('Da xoa'); });
+}
+
+// ── Actions ───────────────────────────────────────────────────────
+function newSession() {
+  var name = document.getElementById('inp-name').value.trim(); // co the trong → server auto-name
+  var autoAccept = document.getElementById('chk-auto').checked;
+  fetch('/api/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, cwd: selectedCwd, autoAccept: autoAccept }),
+  });
+  document.getElementById('inp-name').value = '';
+}
+
+function killAll() {
+  if (!confirm('Dung tat ca session? (van giu lai de Resume sau)')) return;
+  Object.values(state).forEach(function(s) {
+    if (s.status === 'running') fetch('/api/sessions/' + s.id + '/kill', { method:'POST' });
+  });
+}
+
+function resumeAll() {
+  fetch('/api/sessions/resume-all', { method:'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(j) { toast('Resumed ' + (j.resumed || 0) + ' sessions'); });
+}
+
+// ── Sidebar File Explorer ─────────────────────────────────────────
+var activeSid = null;          // session hien tai duoc focus
+var sbCurrentPath = null;      // path dang browse trong sidebar
+var sbSelected = {};           // { sid: { relPathOrAbs: true } } — theo doi checkbox
+var sbInsertLen = {};          // { sid: { key: numChars } } — de uncheck xoa dung so ky tu
+var sbHistory = [];            // navigation history stack
+var sbHistoryIdx = -1;         // current position in history
+var sbNavigating = false;      // flag de khong push khi back/forward
+
+function setActiveSession(sid) {
+  if (!sid || !state[sid]) return;
+  activeSid = sid;
+  // Highlight pane active
+  document.querySelectorAll('.pane').forEach(function(el) { el.classList.remove('active-pane'); });
+  var p = panes[sid];
+  if (p) p.el.classList.add('active-pane');
+  // Load sidebar
+  var s = state[sid];
+  sbBrowse(s.cwd);
+  renderSbSelected();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+  setTimeout(function() {
+    Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
+    applyPresetLayout();
+  }, 220);
+}
+
+function sbRefresh() {
+  if (sbCurrentPath) sbBrowse(sbCurrentPath, true);
+}
+
+// Auto-poll moi 2.5s de bat file moi sinh ra trong thu muc dang xem
+setInterval(function() {
+  var sb = document.getElementById('sidebar');
+  if (!sbCurrentPath) return;
+  if (sb.classList.contains('collapsed')) return;
+  if (document.hidden) return;
+  sbBrowse(sbCurrentPath, true);
+}, 2500);
+
+function sbBrowse(p, silent) {
+  if (!p) return;
+  // Push to history (skip if silent refresh or navigating via back/forward)
+  if (!silent && !sbNavigating) {
+    if (sbHistoryIdx < sbHistory.length - 1) sbHistory = sbHistory.slice(0, sbHistoryIdx + 1);
+    sbHistory.push(p);
+    sbHistoryIdx = sbHistory.length - 1;
+  }
+  sbNavigating = false;
+  sbUpdateNavButtons();
+  sbCurrentPath = p;
+  // Update path input
+  var pathInput = document.getElementById('sb-path-input');
+  if (pathInput) pathInput.value = p;
+  // Drives special case
+  if (p === 'Drives') {
+    document.getElementById('sb-crumb').innerHTML = '<span style="color:var(--muted)">&#x1F4BF; Chon o dia</span>';
+    var listEl = document.getElementById('sb-list');
+    fetch('/api/fs?path=Drives')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var html = '';
+        (data.items || []).forEach(function(d) {
+          html += '<div class="sb-row" data-sb-dir="' + esc(d.path || d.name) + '"><span class="sb-icon">&#x1F4BF;</span><span class="sb-name">' + esc(d.name) + '</span></div>';
+        });
+        listEl.innerHTML = html || '<div class="sb-empty">Khong tim thay o dia</div>';
+        listEl.dataset.sig = '';
+      });
+    return;
+  }
+  // Breadcrumb — normalize path: collapse multiple backslash to single
+  var BS = String.fromCharCode(92);
+  p = p.replace(new RegExp(BS + BS + '+', 'g'), BS);
+  sbCurrentPath = p;
+  var parts = p.split(/[\/\\]/).filter(Boolean);
+  var crumbHtml = '';
+  var accum = '';
+  parts.forEach(function(part, i) {
+    if (i === 0 && /^[A-Za-z]:$/.test(part)) accum = part + BS;
+    else accum = accum + (accum.endsWith(BS) ? '' : BS) + part;
+    if (i > 0) crumbHtml += '<span class="sep">›</span>';
+    crumbHtml += '<span data-sb-crumb="' + esc(accum) + '">' + esc(part) + '</span>';
+  });
+  document.getElementById('sb-crumb').innerHTML = crumbHtml;
+
+  var listEl = document.getElementById('sb-list');
+  var prevScroll = listEl.scrollTop;
+  fetch('/api/fs?files=1&path=' + encodeURIComponent(p))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { listEl.innerHTML = '<div class="sb-empty">' + esc(data.error) + '</div>'; return; }
+      // Cho silent refresh: neu list khong thay doi thi khong re-render (tranh flicker)
+      var sig = JSON.stringify((data.items || []).map(function(i) { return i.type + ':' + i.name + ':' + (i.size||0); }));
+      if (silent && sig === listEl.dataset.sig) return;
+      listEl.dataset.sig = sig;
+      renderSbList(data.items || []);
+      if (silent) listEl.scrollTop = prevScroll;
+    });
+}
+
+function sbUpdateNavButtons() {
+  var backBtn = document.getElementById('sb-back');
+  var fwdBtn = document.getElementById('sb-fwd');
+  if (backBtn) backBtn.disabled = sbHistoryIdx <= 0;
+  if (fwdBtn) fwdBtn.disabled = sbHistoryIdx >= sbHistory.length - 1;
+}
+
+function sbGoBack() {
+  if (sbHistoryIdx <= 0) return;
+  sbHistoryIdx--;
+  sbNavigating = true;
+  sbBrowse(sbHistory[sbHistoryIdx]);
+}
+
+function sbGoForward() {
+  if (sbHistoryIdx >= sbHistory.length - 1) return;
+  sbHistoryIdx++;
+  sbNavigating = true;
+  sbBrowse(sbHistory[sbHistoryIdx]);
+}
+
+function sbGoHome() {
+  if (!activeSid || !state[activeSid]) { toast('Click vao 1 terminal truoc'); return; }
+  sbBrowse(state[activeSid].cwd);
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
+  return (b/1024/1024/1024).toFixed(1) + ' GB';
+}
+
+function renderSbList(items) {
+  var list = document.getElementById('sb-list');
+  if (!items.length) { list.innerHTML = '<div class="sb-empty">Thu muc rong</div>'; return; }
+  // Up row
+  var html = '';
+  var upPath = sbCurrentPath.replace(/[\/][^\/]+[\/]?$/, '') || sbCurrentPath;
+  if (upPath && upPath !== sbCurrentPath) {
+    html += '<div class="sb-row" data-sb-up="' + esc(upPath) + '"><span class="sb-icon">&#x2B06;</span><span class="sb-name">.. (len mot cap)</span></div>';
+  } else if (sbCurrentPath && /^[A-Za-z]:\?$/.test(sbCurrentPath)) {
+    // Dang o root cua drive → hien nut ve Drives
+    html += '<div class="sb-row" data-sb-dir="Drives"><span class="sb-icon">&#x1F4BF;</span><span class="sb-name">.. (tat ca o dia)</span></div>';
+  }
+  var selMap = (activeSid && sbSelected[activeSid]) || {};
+  items.forEach(function(it) {
+    if (it.type === 'dir') {
+      html += '<div class="sb-row" data-sb-dir="' + esc(it.path) + '">' +
+                '<span class="sb-icon">&#x1F4C1;</span>' +
+                '<span class="sb-name">' + esc(it.name) + (it.isProject?' &#x2B50;':'') + '</span>' +
+              '</div>';
+    } else {
+      var key = it.path;
+      var checked = selMap[key] ? 'checked' : '';
+      html += '<div class="sb-row ' + (checked?'checked':'') + '" data-sb-file="' + esc(it.path) + '" data-sb-name="' + esc(it.name) + '">' +
+                '<input type="checkbox" ' + checked + ' data-sb-check="' + esc(it.path) + '" data-sb-name="' + esc(it.name) + '">' +
+                '<span class="sb-icon">&#x1F4C4;</span>' +
+                '<span class="sb-name">' + esc(it.name) + '</span>' +
+                '<span class="sb-size">' + fmtSize(it.size || 0) + '</span>' +
+              '</div>';
+    }
+  });
+  list.innerHTML = html;
+}
+
+function renderSbSelected() {
+  var wrap = document.getElementById('sb-selected');
+  var box = document.getElementById('sb-sel-items');
+  if (!activeSid || !sbSelected[activeSid] || !Object.keys(sbSelected[activeSid]).length) {
+    wrap.style.display = 'none'; box.innerHTML = ''; return;
+  }
+  wrap.style.display = 'block';
+  box.innerHTML = Object.keys(sbSelected[activeSid]).map(function(k) {
+    return '<div class="sb-sel-item">' + esc(sbSelected[activeSid][k].token) + '</div>';
+  }).join('');
+}
+
+// Tinh relative path neu file nam trong cwd session, nguoc lai dung absolute
+function relOrAbs(filePath, sessionCwd) {
+  var BS = String.fromCharCode(92);
+  var fp = filePath.split(BS).join('/').toLowerCase();
+  var cw = sessionCwd.split(BS).join('/').toLowerCase();
+  if (!cw.endsWith('/')) cw += '/';
+  if (fp.startsWith(cw)) return filePath.substring(sessionCwd.length + 1);
+  return filePath;
+}
+
+function sbToggleFile(filePath, fileName, checked) {
+  if (!activeSid) { toast('Click vao 1 terminal truoc'); return; }
+  var s = state[activeSid];
+  var p = panes[activeSid];
+  if (!s || !p || p.ws.readyState !== 1) { toast('Session khong san sang'); return; }
+  sbSelected[activeSid] = sbSelected[activeSid] || {};
+  sbInsertLen[activeSid] = sbInsertLen[activeSid] || {};
+  var rel = relOrAbs(filePath, s.cwd);
+  // Neu path co space, quote
+  var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
+  var token = '@' + ref + ' ';
+  if (checked) {
+    sbSelected[activeSid][filePath] = { token: token };
+    sbInsertLen[activeSid][filePath] = token.length;
+    p.ws.send(token);
+  } else {
+    // Gui backspace x N de xoa (DEL char = 0x7F — claude TUI dung DEL)
+    var n = sbInsertLen[activeSid][filePath] || token.length;
+    var bs = '';
+    for (var i = 0; i < n; i++) bs += '\x7f';
+    p.ws.send(bs);
+    delete sbSelected[activeSid][filePath];
+    delete sbInsertLen[activeSid][filePath];
+  }
+  renderSbSelected();
+}
+
+// Click delegation cho sidebar
+document.getElementById('sidebar').addEventListener('click', function(e) {
+  var check = e.target.closest('[data-sb-check]');
+  if (check) {
+    sbToggleFile(check.dataset.sbCheck, check.dataset.sbName, check.checked);
+    var row = check.closest('.sb-row');
+    if (row) row.classList.toggle('checked', check.checked);
+    e.stopPropagation();
+    return;
+  }
+  var fileRow = e.target.closest('[data-sb-file]');
+  if (fileRow) {
+    // Click toan row = toggle checkbox
+    var cb = fileRow.querySelector('input[type="checkbox"]');
+    if (cb) { cb.checked = !cb.checked; sbToggleFile(cb.dataset.sbCheck, cb.dataset.sbName, cb.checked); fileRow.classList.toggle('checked', cb.checked); }
+    return;
+  }
+  var dir = e.target.closest('[data-sb-dir]');
+  if (dir) { sbBrowse(dir.dataset.sbDir); return; }
+  var up  = e.target.closest('[data-sb-up]');
+  if (up)  { sbBrowse(up.dataset.sbUp); return; }
+  var crumb = e.target.closest('[data-sb-crumb]');
+  if (crumb) { sbBrowse(crumb.dataset.sbCrumb); return; }
+});
+
+// Click vao pane → set active
+document.getElementById('canvas').addEventListener('mousedown', function(e) {
+  var pane = e.target.closest('.pane');
+  if (pane) {
+    var sid = pane.id.replace(/^pane-/, '');
+    if (sid !== activeSid) setActiveSession(sid);
+  }
+}, true);
+
+// Global paste → forward clipboard vao PTY cua active session (text + image)
+document.addEventListener('paste', function(e) {
+  var tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (!activeSid) return;
+  var p = panes[activeSid];
+  if (!p || p.ws.readyState !== 1) return;
+
+  // Check image in clipboard
+  var items = (e.clipboardData || window.clipboardData).items;
+  if (items) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault();
+        var blob = items[i].getAsFile();
+        var reader = new FileReader();
+        reader.onload = function() {
+          var s = state[activeSid];
+          fetch('/api/paste-image', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ data: reader.result, cwd: s ? s.cwd : '' })
+          }).then(function(r){return r.json();}).then(function(j) {
+            if (j.ok) { p.ws.send('@' + j.path + ' '); toast('Da paste hinh: ' + j.name); }
+            else toast('Loi paste hinh: ' + (j.error||''));
+          });
+        };
+        reader.readAsDataURL(blob);
+        return;
+      }
+    }
+  }
+
+  // Text paste
+  var text = (e.clipboardData || window.clipboardData).getData('text');
+  if (!text) return;
+  var CR = String.fromCharCode(13), LF = String.fromCharCode(10);
+  text = text.split(CR + LF).join(LF).split(CR).join(LF);
+  p.ws.send(text);
+  e.preventDefault();
+});
+
+// ── Context Menu (right-click trong sidebar) ──────────────────────
+var ctxTarget = null; // { path, name, type }
+
+function openCtxMenu(x, y, items) {
+  var menu = document.getElementById('ctx-menu');
+  menu.innerHTML = items.map(function(it) {
+    if (it === 'sep') return '<div class="ctx-sep"></div>';
+    return '<div class="ctx-item ' + (it.danger?'danger':'') + '" data-ctx="' + it.act + '">' +
+           '<span class="ctx-icon">' + it.icon + '</span>' + esc(it.label) + '</div>';
+  }).join('');
+  menu.classList.add('show');
+  var mw = menu.offsetWidth, mh = menu.offsetHeight;
+  var left = Math.min(x, window.innerWidth - mw - 8);
+  var top  = Math.min(y, window.innerHeight - mh - 8);
+  menu.style.left = left + 'px';
+  menu.style.top  = top + 'px';
+}
+function closeCtxMenu() { document.getElementById('ctx-menu').classList.remove('show'); }
+
+// Right-click tren sidebar row
+document.getElementById('sidebar').addEventListener('contextmenu', function(e) {
+  var row = e.target.closest('.sb-row');
+  if (!row) {
+    // Right-click tren vung trong → menu "New file/folder" tai sbCurrentPath
+    if (!sbCurrentPath) return;
+    e.preventDefault();
+    ctxTarget = { path: sbCurrentPath, name: '', type: 'dir', isCurrent: true };
+    openCtxMenu(e.clientX, e.clientY, [
+      { act:'new-file',   icon:'&#x1F4C4;', label:'New file' },
+      { act:'new-folder', icon:'&#x1F4C1;', label:'New folder' },
+    ]);
+    return;
+  }
+  var filePath = row.dataset.sbFile || row.dataset.sbDir;
+  if (!filePath) return;
+  e.preventDefault();
+  var isFile = !!row.dataset.sbFile;
+  var nameEl = row.querySelector('.sb-name');
+  ctxTarget = { path: filePath, name: (nameEl ? nameEl.textContent.trim() : ''), type: isFile ? 'file' : 'dir', row: row };
+
+  var items;
+  if (isFile) {
+    items = [
+      { act:'open',       icon:'&#x1F4C2;', label:'Open (app mac dinh)' },
+      { act:'reveal',     icon:'&#x1F4CD;', label:'Reveal in Explorer' },
+      'sep',
+      { act:'attach',     icon:'&#x1F4CE;', label:'Attach to terminal' },
+      { act:'copy-path',  icon:'&#x1F4CB;', label:'Copy path' },
+      'sep',
+      { act:'rename',     icon:'&#x270F;',  label:'Rename' },
+      { act:'duplicate',  icon:'&#x1F4C4;', label:'Duplicate' },
+      { act:'delete',     icon:'&#x1F5D1;', label:'Delete (Recycle Bin)', danger:true },
+    ];
+  } else {
+    items = [
+      { act:'open',       icon:'&#x1F4C2;', label:'Open (vao trong)' },
+      { act:'reveal-dir', icon:'&#x1F4CD;', label:'Open in Explorer' },
+      { act:'vscode',     icon:'&#x1F4BB;', label:'Open in VSCode' },
+      'sep',
+      { act:'new-session',icon:'&#x2795;',  label:'New Session here' },
+      { act:'new-file',   icon:'&#x1F4C4;', label:'New file' },
+      { act:'new-folder', icon:'&#x1F4C1;', label:'New folder' },
+      'sep',
+      { act:'copy-path',  icon:'&#x1F4CB;', label:'Copy path' },
+      { act:'rename',     icon:'&#x270F;',  label:'Rename' },
+      { act:'duplicate',  icon:'&#x1F4C4;', label:'Duplicate' },
+      { act:'delete',     icon:'&#x1F5D1;', label:'Delete (Recycle Bin)', danger:true },
+    ];
+  }
+  openCtxMenu(e.clientX, e.clientY, items);
+});
+
+// Click ngoai dong menu
+document.addEventListener('mousedown', function(e) {
+  var menu = document.getElementById('ctx-menu');
+  if (!menu.classList.contains('show')) return;
+  if (menu.contains(e.target)) return;
+  closeCtxMenu();
+});
+
+// Click item trong menu
+document.getElementById('ctx-menu').addEventListener('click', function(e) {
+  var it = e.target.closest('[data-ctx]');
+  if (!it || !ctxTarget) return;
+  var act = it.dataset.ctx;
+  closeCtxMenu();
+  handleCtxAction(act);
+});
+
+function handleCtxAction(act) {
+  var t = ctxTarget;
+  if (!t) return;
+
+  if (act === 'open') {
+    if (t.type === 'file') {
+      fetch('/api/file-open', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
+        .then(function(r){return r.json();}).then(function(j){ if(!j.ok) toast('Loi: '+j.error); });
+    } else {
+      sbBrowse(t.path);
+    }
+    return;
+  }
+  if (act === 'reveal') {
+    fetch('/api/file-reveal', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) });
+    return;
+  }
+  if (act === 'reveal-dir') {
+    fetch('/api/open', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path, action:'explorer' }) });
+    return;
+  }
+  if (act === 'vscode') {
+    fetch('/api/open', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path, action:'vscode' }) });
+    return;
+  }
+  if (act === 'attach') {
+    var cb = t.row && t.row.querySelector('input[type="checkbox"]');
+    if (cb) { cb.checked = !cb.checked; sbToggleFile(t.path, t.name, cb.checked); t.row.classList.toggle('checked', cb.checked); }
+    return;
+  }
+  if (act === 'copy-path') {
+    navigator.clipboard.writeText(t.path).then(function(){ toast('Da copy path'); });
+    return;
+  }
+  if (act === 'rename') {
+    startInlineFileRename(t);
+    return;
+  }
+  if (act === 'duplicate') {
+    fetch('/api/file-duplicate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
+      .then(function(r){return r.json();}).then(function(j){
+        if (j.ok) { toast('Da duplicate'); sbRefresh(); }
+        else toast('Loi: '+j.error);
+      });
+    return;
+  }
+  if (act === 'delete') {
+    if (!confirm('Xoa "' + t.name + '" vao Recycle Bin?')) return;
+    fetch('/api/file-delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
+      .then(function(r){return r.json();}).then(function(j){
+        if (j.ok) { toast('Da xoa vao Recycle Bin'); sbRefresh(); }
+        else toast('Loi: '+j.error);
+      });
+    return;
+  }
+  if (act === 'new-file' || act === 'new-folder') {
+    var parent = t.isCurrent ? sbCurrentPath : (t.type === 'dir' ? t.path : sbCurrentPath);
+    var name = prompt(act === 'new-file' ? 'Ten file moi:' : 'Ten folder moi:', act === 'new-file' ? 'untitled.txt' : 'new-folder');
+    if (!name) return;
+    fetch('/api/file-new', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ parent: parent, name: name, type: act === 'new-file' ? 'file' : 'dir' }),
+    }).then(function(r){return r.json();}).then(function(j){
+      if (j.ok) { toast('Da tao ' + name); sbRefresh(); }
+      else toast('Loi: '+j.error);
+    });
+    return;
+  }
+  if (act === 'new-session') {
+    fetch('/api/sessions', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ cwd: t.path, autoAccept: document.getElementById('chk-auto').checked }),
+    }).then(function(){ toast('Da tao session: ' + t.name); });
+    return;
+  }
+}
+
+function startInlineFileRename(t) {
+  if (!t.row) return;
+  var nameEl = t.row.querySelector('.sb-name');
+  if (!nameEl) return;
+  var oldHtml = nameEl.innerHTML;
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'sb-rename';
+  input.value = t.name;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  var done = false;
+  function cleanup(newSpan) {
+    if (done) return; done = true;
+    input.replaceWith(newSpan);
+  }
+  function save() {
+    var newName = input.value.trim();
+    if (!newName || newName === t.name) {
+      var span = document.createElement('span');
+      span.className = 'sb-name'; span.innerHTML = oldHtml;
+      cleanup(span); return;
+    }
+    fetch('/api/file-rename', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ path: t.path, newName: newName }),
+    }).then(function(r){return r.json();}).then(function(j){
+      if (j.ok) { toast('Da rename'); sbRefresh(); }
+      else { toast('Loi: '+j.error); var span = document.createElement('span'); span.className='sb-name'; span.innerHTML=oldHtml; cleanup(span); }
+    });
+  }
+  input.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); save(); }
+    else if (ev.key === 'Escape') {
+      var span = document.createElement('span');
+      span.className = 'sb-name'; span.innerHTML = oldHtml;
+      cleanup(span);
+    }
+  });
+  input.addEventListener('blur', save);
+}
+
+// ── Folder Popup ──────────────────────────────────────────────────
+function showFolderPopup(sid, anchorBtn) {
+  var s = state[sid];
+  if (!s) return;
+  var pop = document.getElementById('folder-pop');
+  var fullPath = s.cwd || '';
+  var BS = String.fromCharCode(92);
+  // Breadcrumb: split path theo  hoac /, bo rong
+  var parts = fullPath.split(/[\/]/).filter(Boolean);
+  var crumbHtml = '';
+  var accum = '';
+  parts.forEach(function(part, i) {
+    if (i === 0 && /^[A-Za-z]:$/.test(part)) {
+      accum = part + BS;
+    } else {
+      accum = accum + (accum.endsWith(BS) ? '' : BS) + part;
+    }
+    if (i > 0) crumbHtml += '<span class="sep">›</span>';
+    crumbHtml += '<span data-crumb="' + esc(accum) + '" title="Mo trong Explorer">' + esc(part) + '</span>';
+  });
+  pop.innerHTML =
+    '<div class="fp-path">' + esc(fullPath) + '</div>' +
+    '<div class="fp-crumb">' + crumbHtml + '</div>' +
+    '<div class="fp-acts">' +
+      '<button data-act="explorer">&#x1F4C2; Explorer</button>' +
+      '<button data-act="copy">&#x1F4CB; Copy path</button>' +
+      '<button data-act="vscode">&#x1F4BB; VSCode</button>' +
+      '<button data-act="cmd">&#x1F5A5; CMD</button>' +
+    '</div>';
+  pop.dataset.path = fullPath;
+  // Vi tri: ngay duoi nut anchor
+  var r = anchorBtn.getBoundingClientRect();
+  pop.classList.add('show');
+  // Tinh lai sau khi show de co kich thuoc that
+  var pw = pop.offsetWidth, ph = pop.offsetHeight;
+  var left = Math.min(r.left, window.innerWidth - pw - 12);
+  var top  = r.bottom + 6;
+  if (top + ph > window.innerHeight - 12) top = Math.max(12, r.top - ph - 6);
+  pop.style.left = Math.max(12, left) + 'px';
+  pop.style.top  = top + 'px';
+}
+
+function hideFolderPopup() {
+  document.getElementById('folder-pop').classList.remove('show');
+}
+
+document.getElementById('folder-pop').addEventListener('click', function(e) {
+  var pop = document.getElementById('folder-pop');
+  var fullPath = pop.dataset.path;
+  var crumb = e.target.closest('[data-crumb]');
+  if (crumb) {
+    fetch('/api/open', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ path: crumb.dataset.crumb, action: 'explorer' }),
+    }).then(function(){ toast('Da mo Explorer'); });
+    return;
+  }
+  var act = e.target.closest('[data-act]');
+  if (!act) return;
+  var action = act.dataset.act;
+  if (action === 'copy') {
+    navigator.clipboard.writeText(fullPath).then(function(){ toast('Da copy path'); });
+    hideFolderPopup();
+    return;
+  }
+  fetch('/api/open', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ path: fullPath, action: action }),
+  }).then(function(r){ return r.json(); }).then(function(j){
+    if (j.ok) toast('Da mo ' + action);
+    else toast('Loi: ' + (j.error || 'unknown'));
+  });
+  hideFolderPopup();
+});
+
+// Click ngoai de dong popup
+document.addEventListener('mousedown', function(e) {
+  var pop = document.getElementById('folder-pop');
+  if (!pop.classList.contains('show')) return;
+  if (pop.contains(e.target)) return;
+  if (e.target.closest('[data-folder]')) return;
+  hideFolderPopup();
+});
+
+// ── Toast ─────────────────────────────────────────────────────────
+var toastTimer;
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Sidebar Resize Handle ────────────────────────────────────────
+(function() {
+  var handle = document.getElementById('sb-resize-handle');
+  var sidebar = document.getElementById('sidebar');
+  var startX, startW;
+
+  handle.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    startX = e.clientX;
+    startW = sidebar.offsetWidth;
+    sidebar.classList.add('resizing');
+    handle.classList.add('dragging');
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  function onMove(e) {
+    var newW = startW + (e.clientX - startX);
+    newW = Math.max(180, Math.min(newW, window.innerWidth * 0.6));
+    sidebar.style.width = newW + 'px';
+  }
+
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    sidebar.classList.remove('resizing');
+    handle.classList.remove('dragging');
+    // Save width to localStorage
+    localStorage.setItem('sb-width', sidebar.offsetWidth);
+    // Re-fit terminals
+    Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
+    applyPresetLayout();
+  }
+
+  // Restore saved width
+  var saved = localStorage.getItem('sb-width');
+  if (saved) sidebar.style.width = saved + 'px';
+})();
+
+// ── Drag & Drop tu Windows Explorer ──────────────────────────────
+(function() {
+  var sbOverlay = document.getElementById('sb-drop-overlay');
+  var canvasOverlay = document.getElementById('canvas-drop-overlay');
+  var sidebar = document.getElementById('sidebar');
+  var canvas = document.getElementById('canvas');
+  var sbCounter = 0, cvCounter = 0;
+
+  function extractPaths(e) {
+    // Electron/NW.js: e.dataTransfer.files co .path
+    // Trinh duyet thuong: chi co .name, khong co full path
+    // Fallback: text/uri-list hoac text/plain
+    var paths = [];
+    var files = e.dataTransfer.files;
+    if (files && files.length) {
+      for (var i = 0; i < files.length; i++) {
+        // webkitRelativePath hoac path (Electron)
+        var fp = files[i].path || files[i].name;
+        if (fp) paths.push(fp);
+      }
+    }
+    // Fallback: text data (co the la path khi drag tu Explorer)
+    if (!paths.length) {
+      var txt = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list') || '';
+      if (txt) {
+        txt.split(String.fromCharCode(10)).forEach(function(line) {
+          line = line.trim().replace(/^file:[/][/][/]/, '').split('/').join(String.fromCharCode(92));
+          if (line) paths.push(decodeURIComponent(line));
+        });
+      }
+    }
+    return paths;
+  }
+
+  // ── Sidebar drop: gui @path vao terminal (giong canvas drop) ──
+  sidebar.addEventListener('dragenter', function(e) { e.preventDefault(); sbCounter++; sbOverlay.classList.add('show'); });
+  sidebar.addEventListener('dragleave', function(e) { sbCounter--; if (sbCounter <= 0) { sbCounter = 0; sbOverlay.classList.remove('show'); } });
+  sidebar.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  sidebar.addEventListener('drop', function(e) {
+    e.preventDefault(); sbCounter = 0; sbOverlay.classList.remove('show');
+    sendDroppedFiles(e, activeSid);
+  });
+
+  // ── Ham chung: gui file paths vao terminal ──
+  function sendDroppedFiles(e, fallbackSid) {
+    var paths = extractPaths(e);
+    if (!paths.length) { toast('Khong doc duoc duong dan file'); return; }
+    var targetPane = e.target.closest('.pane');
+    var sid = targetPane ? targetPane.id.replace(/^pane-/, '') : fallbackSid;
+    if (!sid) { toast('Click vao 1 terminal truoc'); return; }
+    var p = panes[sid];
+    if (!p || p.ws.readyState !== 1) { toast('Session khong san sang'); return; }
+    paths.forEach(function(fp) {
+      var s = state[sid];
+      var rel = relOrAbs(fp, s ? s.cwd : '');
+      var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
+      p.ws.send('@' + ref + ' ');
+    });
+    toast('Da gui ' + paths.length + ' file vao terminal');
+  }
+
+  // ── Canvas drop: insert @path into terminal ──
+  canvas.addEventListener('dragenter', function(e) { e.preventDefault(); cvCounter++; canvasOverlay.classList.add('show'); });
+  canvas.addEventListener('dragleave', function(e) { cvCounter--; if (cvCounter <= 0) { cvCounter = 0; canvasOverlay.classList.remove('show'); } });
+  canvas.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  canvas.addEventListener('drop', function(e) {
+    e.preventDefault(); cvCounter = 0; canvasOverlay.classList.remove('show');
+    sendDroppedFiles(e, activeSid);
+  });
+  // Safety: hide overlays when drag ends (browser sometimes misses dragleave)
+  document.addEventListener('dragend', function() { sbCounter = 0; cvCounter = 0; sbOverlay.classList.remove('show'); canvasOverlay.classList.remove('show'); });
+  document.addEventListener('drop', function(e) { e.preventDefault(); sbCounter = 0; cvCounter = 0; sbOverlay.classList.remove('show'); canvasOverlay.classList.remove('show'); });
+  document.addEventListener('dragover', function(e) { e.preventDefault(); });
+})();
+
+// ── Keyboard shortcut: Alt+Left/Right cho sidebar nav ────────────
+document.addEventListener('keydown', function(e) {
+  if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); sbGoBack(); }
+  if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); sbGoForward(); }
+});
+
+connectCtrl();
+</script>
+</body>
+</html>

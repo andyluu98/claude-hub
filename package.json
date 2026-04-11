@@ -1,0 +1,41 @@
+{
+  "name": "claude-hub",
+  "version": "1.0.0",
+  "description": "Windows-native dashboard for managing multiple Claude Code sessions in parallel, with real PTY terminals in the browser.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "dashboard",
+    "terminal",
+    "xterm",
+    "pty",
+    "windows"
+  ],
+  "author": "ltuananhsd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ltuananhsd/claude-hub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ltuananhsd/claude-hub/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "win32"
+  ],
+  "dependencies": {
+    "express": "^4.18.0",
+    "node-pty": "^1.0.0",
+    "uuid": "^9.0.0",
+    "ws": "^8.16.0",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0"
+  }
+}
