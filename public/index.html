@@ -577,6 +577,10 @@ button[data-zoom] { font-style:normal; }
 .cp-swatch:hover { transform:scale(1.2); box-shadow:0 0 8px currentColor; }
 .cp-swatch.clear { background:transparent !important; border-color:var(--border-strong); color:var(--muted); }
 .pane-head .dot { cursor:pointer; }
+#note-pop { position:fixed; z-index:950; background:var(--panel-solid); border:1px solid var(--border-strong); border-radius:10px; padding:14px; width:280px; box-shadow:var(--shadow-lg); }
+#note-pop textarea { width:100%; height:90px; resize:vertical; background:var(--bg2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:8px; font-family:inherit; font-size:12px; outline:none; transition:border-color .15s; }
+#note-pop textarea:focus { border-color:var(--blue); }
+#note-pop .note-actions { display:flex; justify-content:flex-end; gap:6px; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -696,6 +700,7 @@ button[data-zoom] { font-style:normal; }
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
 var sessionFilter = '';
+var sessionNotes = JSON.parse(localStorage.getItem('claude-hub-notes') || '{}');
 var paneColors = JSON.parse(localStorage.getItem('claude-hub-colors') || '{}');
 var COLOR_PALETTE = ['', '#f85149', '#e3b341', '#3fb950', '#58a6ff', '#a371f7', '#f0883e', '#ec6547'];
 function changeFontSize(delta) {
@@ -1120,6 +1125,7 @@ function createPaneElement(s) {
       '<button title="Zoom / unzoom" data-zoom="' + s.id + '"></button>' +
       '<button title="Split right" data-split-h="' + s.id + '">&#x229E;</button>' +
       '<button title="Split down"  data-split-v="' + s.id + '">&#x229F;</button>' +
+      '<button title="Session note" data-note="' + s.id + '" style="' + (sessionNotes[s.id] ? 'color:var(--orange)' : '') + '">&#x270F;</button>' +
       '<button title="Open folder" data-folder="' + s.id + '">&#x1F4C1;</button>' +
       '<button title="Resume" data-resume="' + s.id + '">&#x25B6;</button>' +
       '<button title="Stop (keep session)" data-kill="' + s.id + '">&#x25A0;</button>' +
@@ -1316,6 +1322,8 @@ function requestSplit(sid, dir) {
 }
 
 document.getElementById('canvas').addEventListener('click', function(e) {
+  var noteBtn = e.target.closest('[data-note]');
+  if (noteBtn) { e.stopPropagation(); showNoteEditor(noteBtn.dataset.note, noteBtn); return; }
   var colorDot = e.target.closest('[data-color-dot]');
   if (colorDot) { e.stopPropagation(); showColorPicker(colorDot.dataset.colorDot, colorDot); return; }
   var zoomBtn = e.target.closest('[data-zoom]');
@@ -1472,6 +1480,53 @@ function sendBroadcast(cmd) {
   } else {
     toast('Sent to ' + count + ' running session' + (count !== 1 ? 's' : ''));
   }
+}
+
+function updateNoteBtn(sid) {
+  var p = panes[sid];
+  if (!p) return;
+  var btn = p.el.querySelector('[data-note]');
+  if (btn) btn.style.color = sessionNotes[sid] ? 'var(--orange)' : '';
+}
+
+function showNoteEditor(sid, anchorEl) {
+  var existing = document.getElementById('note-pop');
+  if (existing) { existing.remove(); if (existing.dataset.sid === sid) return; }
+  var pop = document.createElement('div');
+  pop.id = 'note-pop';
+  pop.dataset.sid = sid;
+  var rect = anchorEl.getBoundingClientRect();
+  pop.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
+  pop.style.top  = Math.min(rect.bottom + 6, window.innerHeight - 180) + 'px';
+  var ta = document.createElement('textarea');
+  ta.placeholder = 'Notes for this session...';
+  ta.value = sessionNotes[sid] || '';
+  var actions = document.createElement('div');
+  actions.className = 'note-actions';
+  var btnCancel = document.createElement('button');
+  btnCancel.className = 'btn btn-ghost'; btnCancel.style.padding = '4px 12px'; btnCancel.textContent = 'Cancel';
+  var btnSave = document.createElement('button');
+  btnSave.className = 'btn btn-primary'; btnSave.style.padding = '4px 12px'; btnSave.textContent = 'Save';
+  btnSave.addEventListener('click', function() {
+    var val = ta.value.trim();
+    if (val) sessionNotes[sid] = val; else delete sessionNotes[sid];
+    localStorage.setItem('claude-hub-notes', JSON.stringify(sessionNotes));
+    updateNoteBtn(sid);
+    pop.remove();
+  });
+  btnCancel.addEventListener('click', function() { pop.remove(); });
+  actions.appendChild(btnCancel); actions.appendChild(btnSave);
+  pop.appendChild(ta); pop.appendChild(actions);
+  document.body.appendChild(pop);
+  ta.focus();
+  setTimeout(function() {
+    function dismiss(ev) {
+      if (!pop.contains(ev.target) && ev.target !== anchorEl) {
+        pop.remove(); document.removeEventListener('mousedown', dismiss);
+      }
+    }
+    document.addEventListener('mousedown', dismiss);
+  }, 0);
 }
 
 function toggleOverseer() {
