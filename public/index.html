@@ -561,6 +561,10 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.08); border-radius:4px; border:2px solid transparent; background-clip:padding-box; }
 ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.15); background-clip:padding-box; }
+.pane.zoomed { border-color:var(--blue) !important; box-shadow:0 0 0 2px var(--blue), var(--shadow-lg) !important; }
+.pane.zoomed [data-zoom]::before { content:'⊠'; }
+.pane:not(.zoomed) [data-zoom]::before { content:'⤢'; }
+[data-zoom] { font-style:normal; }
 </style>
 </head>
 <body>
@@ -669,6 +673,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
 
 <script>
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
+var zoomedSid = null;
 function changeFontSize(delta) {
   termFontSize = Math.max(8, Math.min(24, termFontSize + delta));
   localStorage.setItem('claude-hub-fontsize', termFontSize);
@@ -857,6 +862,7 @@ function renderTree(node, el) {
     p.el.style.minWidth = '0';
     p.el.style.minHeight = '0';
     el.appendChild(p.el);
+    p.el.classList.remove('zoomed');
   } else {
     var isH = node.dir === 'h';
     var container = document.createElement('div');
@@ -892,11 +898,23 @@ function rebuildCanvas() {
   if (!tree) { updateEmpty(); return; }
   var emptyEl = document.getElementById('empty');
   if (emptyEl) emptyEl.remove();
-  renderTree(tree, canvas);
-  // Wait for browser layout before opening/fitting terminals
-  requestAnimationFrame(function() {
-    openAndFitSubtree(tree);
-  });
+
+  // If a pane is zoomed and it belongs to this lane, show only that pane
+  if (zoomedSid && panes[zoomedSid] && findLeaf(tree, zoomedSid)) {
+    var zp = panes[zoomedSid];
+    zp.el.classList.add('zoomed');
+    zp.el.style.flex = '1';
+    zp.el.style.minWidth = '0';
+    zp.el.style.minHeight = '0';
+    canvas.appendChild(zp.el);
+    requestAnimationFrame(function() {
+      openAndFitSubtree({ type: 'leaf', sessionId: zoomedSid });
+    });
+  } else {
+    if (zoomedSid) zoomedSid = null; // zoomed pane not in current lane — clear zoom
+    renderTree(tree, canvas);
+    requestAnimationFrame(function() { openAndFitSubtree(tree); });
+  }
 }
 
 // ── Control WebSocket ─────────────────────────────────────────────
@@ -1039,6 +1057,7 @@ function createPaneElement(s) {
         '<button title="Move to Pending" data-lane-set="pending" data-sid="' + s.id + '" class="' + (lane==='pending'?'on':'') + '">P</button>' +
         '<button title="Move to Done"    data-lane-set="done"    data-sid="' + s.id + '" class="' + (lane==='done'?'on':'') + '">D</button>' +
       '</span>' +
+      '<button title="Zoom / unzoom" data-zoom="' + s.id + '"></button>' +
       '<button title="Split right" data-split-h="' + s.id + '">&#x229E;</button>' +
       '<button title="Split down"  data-split-v="' + s.id + '">&#x229F;</button>' +
       '<button title="Open folder" data-folder="' + s.id + '">&#x1F4C1;</button>' +
@@ -1233,6 +1252,8 @@ function requestSplit(sid, dir) {
 }
 
 document.getElementById('canvas').addEventListener('click', function(e) {
+  var zoomBtn = e.target.closest('[data-zoom]');
+  if (zoomBtn) { toggleZoom(zoomBtn.dataset.zoom); return; }
   var splitH = e.target.closest('[data-split-h]');
   if (splitH) { requestSplit(splitH.dataset.splitH, 'h'); return; }
   var splitV = e.target.closest('[data-split-v]');
@@ -1302,6 +1323,11 @@ window.addEventListener('resize', function() {
     fitSubtree(layoutTrees[lane]);
   });
 });
+
+function toggleZoom(sid) {
+  zoomedSid = (zoomedSid === sid) ? null : sid;
+  rebuildCanvas();
+}
 
 function toggleOverseer() {
   document.getElementById('overseer-pane').classList.toggle('collapsed');
