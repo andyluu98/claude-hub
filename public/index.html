@@ -600,6 +600,10 @@ button[data-zoom] { font-style:normal; }
 .search-bar button { background:transparent; border:1px solid var(--border); color:var(--text-dim); border-radius:5px; cursor:pointer; padding:2px 7px; font-size:12px; transition:background .1s; }
 .search-bar button:hover { background:var(--panel); }
 .search-bar button.active { background:rgba(88,166,255,.15); border-color:var(--blue); color:var(--blue); }
+.pane-head { cursor: grab; user-select: none; }
+.pane-head:active { cursor: grabbing; }
+.pane.drag-source { opacity: 0.45; }
+.pane.drag-target { outline: 2px solid var(--blue); outline-offset: -2px; }
 </style>
 </head>
 <body>
@@ -726,6 +730,7 @@ button[data-zoom] { font-style:normal; }
 <script>
 var searchCaseSensitive = {};
 var activeSearchSid = null;
+var dragState = { active: false, fromSid: null };
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
 var sessionFilter = '';
@@ -801,6 +806,11 @@ function loadSavedLayoutTrees() {
       if (s) layoutTrees[lane] = JSON.parse(s);
     } catch(_){}
   });
+}
+function swapLeaves(node, sidA, sidB) {
+  var leafA = findLeaf(node, sidA);
+  var leafB = findLeaf(node, sidB);
+  if (leafA && leafB) { leafA.sessionId = sidB; leafB.sessionId = sidA; }
 }
 function findLeaf(node, sid) {
   if (!node) return null;
@@ -1372,6 +1382,20 @@ function requestSplit(sid, dir) {
   pendingSplitTarget = { sid: sid, dir: dir, lane: lane };
   newSession();
 }
+
+document.getElementById('canvas').addEventListener('mousedown', function(e) {
+  if (zoomedSid || sessionFilter) return;           // disabled in zoom / filter mode
+  var head = e.target.closest('.pane-head');
+  if (!head) return;
+  if (e.target.closest('button') || e.target.closest('.lane-btns') || e.target.closest('[data-color-dot]')) return;
+  var paneEl = head.closest('.pane');
+  if (!paneEl) return;
+  e.preventDefault();
+  var sid = paneEl.id.replace('pane-', '');
+  dragState.active = true;
+  dragState.fromSid = sid;
+  paneEl.classList.add('drag-source');
+});
 
 document.getElementById('canvas').addEventListener('click', function(e) {
   var caseBtn = e.target.closest('[id^="search-case-"]');
@@ -2740,6 +2764,38 @@ document.getElementById('canvas').addEventListener('input', function(e) {
   var sid = inp.id.replace('search-inp-', '');
   runSearch(sid);
 });
+document.addEventListener('mousemove', function(e) {
+  if (!dragState.active) return;
+  document.querySelectorAll('.pane.drag-target').forEach(function(p) { p.classList.remove('drag-target'); });
+  var el = document.elementFromPoint(e.clientX, e.clientY);
+  if (!el) return;
+  var paneEl = el.closest('.pane');
+  if (!paneEl) return;
+  var toSid = paneEl.id.replace('pane-', '');
+  if (toSid !== dragState.fromSid) paneEl.classList.add('drag-target');
+});
+
+document.addEventListener('mouseup', function(e) {
+  if (!dragState.active) return;
+  document.querySelectorAll('.pane.drag-source').forEach(function(p) { p.classList.remove('drag-source'); });
+  document.querySelectorAll('.pane.drag-target').forEach(function(p) { p.classList.remove('drag-target'); });
+  var el = document.elementFromPoint(e.clientX, e.clientY);
+  var toSid = null;
+  if (el) {
+    var paneEl = el.closest('.pane');
+    if (paneEl) toSid = paneEl.id.replace('pane-', '');
+  }
+  var fromSid = dragState.fromSid;
+  dragState.active = false;
+  dragState.fromSid = null;
+  if (!toSid || toSid === fromSid) return;
+  var tree = layoutTrees[currentTab];
+  if (!tree) return;
+  swapLeaves(tree, fromSid, toSid);
+  saveLayoutTree(currentTab, tree);
+  rebuildCanvas();
+});
+
 connectCtrl();
 </script>
 </body>
