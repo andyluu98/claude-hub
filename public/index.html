@@ -587,6 +587,11 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
   <button class="btn btn-primary" onclick="newSession()">+ New Session</button>
   <button class="btn btn-primary" onclick="resumeAll()" title="Restart all stopped sessions">&#x25B6; Resume All</button>
   <button class="btn btn-ghost" onclick="killAll()">Stop All</button>
+  <div style="display:flex;align-items:center;gap:3px;margin-left:4px">
+    <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;font-weight:700" onclick="changeFontSize(-1)" title="Decrease font size">A−</button>
+    <span id="btn-font-size" style="font-size:11px;color:var(--muted);min-width:28px;text-align:center"></span>
+    <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;font-weight:700" onclick="changeFontSize(1)" title="Increase font size">A+</button>
+  </div>
   <div style="flex:1"></div>
   <button class="btn btn-purple" onclick="toggleOverseer()">&#x1F9E0; Overseer</button>
 </div>
@@ -663,6 +668,15 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
 <div id="toast"></div>
 
 <script>
+var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize')) || 12;
+function changeFontSize(delta) {
+  termFontSize = Math.max(8, Math.min(24, termFontSize + delta));
+  localStorage.setItem('claude-hub-fontsize', termFontSize);
+  Object.values(panes).forEach(function(p) {
+    try { p.term.options.fontSize = termFontSize; p.fit.fit(); } catch(_){}
+  });
+  document.getElementById('btn-font-size').textContent = termFontSize + 'px';
+}
 var state = {};      // sessionId -> session JSON
 var panes = {};      // sessionId -> { term, ws, fit, el }
 var ctrlWs, retryCount = 0;
@@ -1037,7 +1051,7 @@ function createPaneElement(s) {
   var termTheme = currentTheme === 'light' ? TERM_THEME_LIGHT : TERM_THEME_DARK;
   var term = new Terminal({
     fontFamily: 'Consolas, "Courier New", monospace',
-    fontSize: 12,
+    fontSize: termFontSize,
     theme: termTheme,
     cursorBlink: true, scrollback: 5000, allowProposedApi: true,
   });
@@ -2182,6 +2196,7 @@ document.addEventListener('keydown', function(e) {
 // Apply saved theme on load
 applyTheme(currentTheme);
 
+document.getElementById('btn-font-size').textContent = termFontSize + 'px';
 connectCtrl();
 </script>
 </body>
