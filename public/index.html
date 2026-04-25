@@ -1078,6 +1078,7 @@ function connectCtrl() {
     b.className = '';
     setTimeout(connectCtrl, Math.min(5000, 1000 * ++retryCount));
   };
+  ctrlWs.onerror = function() { ctrlWs.close(); };
   ctrlWs.onmessage = function(e) {
     var msg = JSON.parse(e.data);
     if (msg.type === 'init') {
