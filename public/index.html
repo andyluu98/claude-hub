@@ -42,6 +42,25 @@
 }
 [data-theme="light"] ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.15); background-clip:padding-box; }
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.25); background-clip:padding-box; }
+[data-theme="light"] #bar input { background:rgba(220,225,232,.85); color:var(--text); }
+[data-theme="light"] #bar input:focus { background:#fff; }
+[data-theme="light"] #btn-cwd { background:rgba(220,225,232,.85); color:var(--text); }
+[data-theme="light"] #btn-cwd:hover { background:rgba(220,225,232,1); }
+[data-theme="light"] .btn-ghost { background:rgba(0,0,0,.07); color:var(--text-dim); border-color:var(--border); }
+[data-theme="light"] .btn-ghost:hover { background:rgba(0,0,0,.12); border-color:var(--border-strong); }
+[data-theme="light"] .pane-head .nm:hover { background:rgba(0,0,0,.07); }
+[data-theme="light"] .pane-head .nm-input { background:#fff; color:var(--text); }
+[data-theme="light"] .pane-head button:hover { background:rgba(0,0,0,.07); color:var(--text); }
+[data-theme="light"] .pane-head button[data-remove]:hover { color:var(--red); background:rgba(248,81,73,.1); }
+[data-theme="light"] #overseer-pane { background:linear-gradient(180deg, rgba(163,113,247,.07), rgba(220,225,232,.8)); border-bottom-color:rgba(163,113,247,.25); }
+[data-theme="light"] #sidebar .sb-nav button { background:rgba(0,0,0,.05); border-color:var(--border); color:var(--text-dim); }
+[data-theme="light"] #sidebar .sb-nav button:hover { background:rgba(88,166,255,.08); }
+[data-theme="light"] #sidebar .sb-row:hover { background:rgba(0,0,0,.05); color:var(--text); }
+[data-theme="light"] .modal-paste { background:rgba(220,225,232,.45); }
+[data-theme="light"] .modal-paste input { background:#fff; border-color:var(--border); }
+[data-theme="light"] .modal-path { background:rgba(220,225,232,.4); }
+[data-theme="light"] .modal-foot { background:rgba(220,225,232,.35); }
+[data-theme="light"] #btn-theme:hover { background:rgba(0,0,0,.07); }
 * { box-sizing:border-box; margin:0; padding:0; }
 html, body { height:100%; }
 body {
@@ -766,10 +785,25 @@ function fitSubtree(node) {
   if (!node) return;
   if (node.type === 'leaf') {
     var p = panes[node.sessionId];
-    if (p) { try { p.fit.fit(); } catch(_){} }
+    if (p && p.opened) { try { p.fit.fit(); } catch(_){} }
   } else {
     fitSubtree(node.children[0]);
     fitSubtree(node.children[1]);
+  }
+}
+function openAndFitSubtree(node) {
+  if (!node) return;
+  if (node.type === 'leaf') {
+    var p = panes[node.sessionId];
+    if (!p) return;
+    if (!p.opened) {
+      var termEl = document.getElementById('term-' + node.sessionId);
+      if (termEl) { p.term.open(termEl); p.opened = true; }
+    }
+    if (p.opened) { try { p.fit.fit(); } catch(_){} }
+  } else {
+    openAndFitSubtree(node.children[0]);
+    openAndFitSubtree(node.children[1]);
   }
 }
 function makeDividerDraggable(divider, node, wrapA, container, isH) {
@@ -832,18 +866,22 @@ function renderTree(node, el) {
 function rebuildCanvas() {
   var canvas = document.getElementById('canvas');
   var dropOverlay = document.getElementById('canvas-drop-overlay');
-  // Detach pane elements before clearing so terminals aren't destroyed
+  // Detach pane elements so terminals survive the canvas clear
   Object.values(panes).forEach(function(p) {
     if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
   });
-  canvas.innerHTML = '';
+  // Clear canvas without destroying detached pane elements
+  while (canvas.firstChild) canvas.removeChild(canvas.firstChild);
   if (dropOverlay) canvas.appendChild(dropOverlay);
   var tree = layoutTrees[currentTab];
   if (!tree) { updateEmpty(); return; }
   var emptyEl = document.getElementById('empty');
   if (emptyEl) emptyEl.remove();
   renderTree(tree, canvas);
-  setTimeout(function() { fitSubtree(tree); }, 60);
+  // Wait for browser layout before opening/fitting terminals
+  requestAnimationFrame(function() {
+    openAndFitSubtree(tree);
+  });
 }
 
 // ── Control WebSocket ─────────────────────────────────────────────
@@ -986,12 +1024,6 @@ function createPaneElement(s) {
     '</div>' +
     '<div class="pane-body"><div class="xterm-wrap" id="term-' + s.id + '"></div></div>';
 
-  // Mount into off-screen holder so xterm can initialize
-  var holder = document.createElement('div');
-  holder.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:800px;height:400px;overflow:hidden;';
-  document.body.appendChild(holder);
-  holder.appendChild(el);
-
   var termTheme = currentTheme === 'light' ? TERM_THEME_LIGHT : TERM_THEME_DARK;
   var term = new Terminal({
     fontFamily: 'Consolas, "Courier New", monospace',
@@ -1001,9 +1033,7 @@ function createPaneElement(s) {
   });
   var fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
-  term.open(document.getElementById('term-' + s.id));
-  document.body.removeChild(holder);
-  // el is now detached from DOM — renderTree will place it
+  // term.open() is deferred until the pane element is in the real DOM (see openAndFitSubtree)
 
   var ws = new WebSocket('ws://' + location.host + '/term/' + s.id);
   ws.binaryType = 'arraybuffer';
@@ -1013,7 +1043,10 @@ function createPaneElement(s) {
   };
   ws.onopen = function() {
     setTimeout(function() {
-      try { fit.fit(); ws.send(JSON.stringify({ type:'resize', cols:term.cols, rows:term.rows })); } catch(_){}
+      var pp = panes[s.id];
+      if (pp && pp.opened) {
+        try { pp.fit.fit(); ws.send(JSON.stringify({ type:'resize', cols:term.cols, rows:term.rows })); } catch(_){}
+      }
     }, 100);
   };
   term.onData(function(d) { if (ws.readyState === 1) ws.send(d); });
@@ -1044,7 +1077,7 @@ function createPaneElement(s) {
     return false;
   });
 
-  var termEl = document.getElementById('term-' + s.id);
+  var termEl = el.querySelector('.xterm-wrap');
   termEl.addEventListener('contextmenu', function(ev) { ev.preventDefault(); pasteFromClipboard(ws, s.id); });
   termEl.addEventListener('auxclick', function(ev) { if (ev.button !== 1) return; ev.preventDefault(); pasteFromClipboard(ws, s.id); });
   termEl.addEventListener('dragover', function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
@@ -1064,7 +1097,7 @@ function createPaneElement(s) {
     toast('Sent ' + files.length + ' file(s) to terminal');
   });
 
-  panes[s.id] = { term: term, ws: ws, fit: fit, el: el };
+  panes[s.id] = { term: term, ws: ws, fit: fit, el: el, opened: false };
 }
 
 function addPane(s) {
