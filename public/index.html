@@ -1297,19 +1297,20 @@ function createPaneElement(s) {
     }
     if (ev.shiftKey && ev.key === 'Enter') {
       ev.preventDefault();
-      if (ws.readyState === 1) ws.send(String.fromCharCode(27) + '[13;2u');
+      var _ws = panes[s.id] && panes[s.id].ws;
+      if (_ws && _ws.readyState === 1) _ws.send(String.fromCharCode(27) + '[13;2u');
       return false;
     }
     var isPaste = (ev.ctrlKey && (ev.key === 'v' || ev.key === 'V')) || (ev.shiftKey && ev.key === 'Insert');
     if (!isPaste) return true;
     ev.preventDefault();
-    pasteFromClipboard(ws, s.id);
+    pasteFromClipboard(panes[s.id] && panes[s.id].ws, s.id);
     return false;
   });
 
   var termEl = el.querySelector('.xterm-wrap');
-  termEl.addEventListener('contextmenu', function(ev) { ev.preventDefault(); pasteFromClipboard(ws, s.id); });
-  termEl.addEventListener('auxclick', function(ev) { if (ev.button !== 1) return; ev.preventDefault(); pasteFromClipboard(ws, s.id); });
+  termEl.addEventListener('contextmenu', function(ev) { ev.preventDefault(); pasteFromClipboard(panes[s.id] && panes[s.id].ws, s.id); });
+  termEl.addEventListener('auxclick', function(ev) { if (ev.button !== 1) return; ev.preventDefault(); pasteFromClipboard(panes[s.id] && panes[s.id].ws, s.id); });
   termEl.addEventListener('dragover', function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
   termEl.addEventListener('drop', function(ev) {
     ev.preventDefault(); ev.stopPropagation();
@@ -1317,11 +1318,12 @@ function createPaneElement(s) {
     if (!files || !files.length) return;
     for (var fi = 0; fi < files.length; fi++) {
       var fp = files[fi].path || files[fi].name;
-      if (fp && ws.readyState === 1) {
+      var _ws = panes[s.id] && panes[s.id].ws;
+      if (fp && _ws && _ws.readyState === 1) {
         var sObj = state[s.id];
         var rel = relOrAbs(fp, sObj ? sObj.cwd : '');
         var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
-        ws.send('@' + ref + ' ');
+        _ws.send('@' + ref + ' ');
       }
     }
     toast('Sent ' + files.length + ' file(s) to terminal');
@@ -1349,6 +1351,7 @@ function addPane(s) {
 function removePane(sid) {
   var p = panes[sid];
   if (p) {
+    if (p.reconnectTimer) { clearTimeout(p.reconnectTimer); p.reconnectTimer = null; }
     try { p.ws.close(); } catch(_){}
     closeSearchBar(sid);
     delete searchCaseSensitive[sid];
@@ -2104,7 +2107,7 @@ function scheduleTermReconnect(sid) {
   var p = panes[sid];
   if (!p) return;
   var attempt = p.reconnectAttempt;
-  if (attempt > TERM_RECONNECT_DELAYS.length) return;
+  if (attempt > TERM_RECONNECT_DELAYS.length) return; // safety: prevents infinite re-entry
   if (p.reconnectTimer) { clearTimeout(p.reconnectTimer); p.reconnectTimer = null; }
   if (attempt >= TERM_RECONNECT_DELAYS.length) {
     showTermOverlay(sid, 'Disconnected', true);
@@ -2119,6 +2122,8 @@ function scheduleTermReconnect(sid) {
 function reconnectTerm(sid) {
   var p = panes[sid];
   if (!p) return;
+  if (p.ws && (p.ws.readyState === 0 || p.ws.readyState === 1)) return;
+  p.reconnectAttempt = 0;
   if (p.reconnectTimer) { clearTimeout(p.reconnectTimer); p.reconnectTimer = null; }
   var newWs = new WebSocket('ws://' + location.host + '/term/' + sid);
   newWs.binaryType = 'arraybuffer';
