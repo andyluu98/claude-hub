@@ -1495,9 +1495,6 @@ function showNoteEditor(sid, anchorEl) {
   var pop = document.createElement('div');
   pop.id = 'note-pop';
   pop.dataset.sid = sid;
-  var rect = anchorEl.getBoundingClientRect();
-  pop.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
-  pop.style.top  = Math.min(rect.bottom + 6, window.innerHeight - 180) + 'px';
   var ta = document.createElement('textarea');
   ta.placeholder = 'Notes for this session...';
   ta.value = sessionNotes[sid] || '';
@@ -1507,24 +1504,37 @@ function showNoteEditor(sid, anchorEl) {
   btnCancel.className = 'btn btn-ghost'; btnCancel.style.padding = '4px 12px'; btnCancel.textContent = 'Cancel';
   var btnSave = document.createElement('button');
   btnSave.className = 'btn btn-primary'; btnSave.style.padding = '4px 12px'; btnSave.textContent = 'Save';
+  var dismiss;
   btnSave.addEventListener('click', function() {
     var val = ta.value.trim();
     if (val) sessionNotes[sid] = val; else delete sessionNotes[sid];
     localStorage.setItem('claude-hub-notes', JSON.stringify(sessionNotes));
     updateNoteBtn(sid);
+    document.removeEventListener('mousedown', dismiss);
     pop.remove();
   });
-  btnCancel.addEventListener('click', function() { pop.remove(); });
+  btnCancel.addEventListener('click', function() {
+    document.removeEventListener('mousedown', dismiss);
+    pop.remove();
+  });
   actions.appendChild(btnCancel); actions.appendChild(btnSave);
   pop.appendChild(ta); pop.appendChild(actions);
   document.body.appendChild(pop);
+  var rect = anchorEl.getBoundingClientRect();
+  var pw = pop.offsetWidth, ph = pop.offsetHeight;
+  var left = Math.min(rect.left, window.innerWidth - pw - 8);
+  var top = rect.bottom + 6;
+  if (top + ph > window.innerHeight) top = rect.top - ph - 6;
+  pop.style.left = Math.max(0, left) + 'px';
+  pop.style.top  = Math.max(0, top)  + 'px';
   ta.focus();
   setTimeout(function() {
-    function dismiss(ev) {
-      if (!pop.contains(ev.target) && ev.target !== anchorEl) {
-        pop.remove(); document.removeEventListener('mousedown', dismiss);
+    dismiss = function(ev) {
+      if (!pop.contains(ev.target) && !anchorEl.contains(ev.target)) {
+        document.removeEventListener('mousedown', dismiss);
+        pop.remove();
       }
-    }
+    };
     document.addEventListener('mousedown', dismiss);
   }, 0);
 }
