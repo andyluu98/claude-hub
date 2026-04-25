@@ -122,6 +122,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
   background:var(--panel);
   backdrop-filter:blur(20px);
   -webkit-backdrop-filter:blur(20px);
+  position:relative;
 }
 #bar input {
   background:rgba(13,17,23,.6);
@@ -590,7 +591,6 @@ button[data-zoom] { font-style:normal; }
 #preset-panel .preset-item .preset-del { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:2px 5px; border-radius:4px; }
 #preset-panel .preset-item .preset-del:hover { color:var(--red); background:rgba(248,81,73,.12); }
 #preset-panel .preset-empty { font-size:11.5px; color:var(--muted); padding:4px 0 8px; }
-#bar { position:relative; }
 </style>
 </head>
 <body>
@@ -719,6 +719,7 @@ var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 
 var zoomedSid = null;
 var sessionFilter = '';
 var layoutPresets = JSON.parse(localStorage.getItem('claude-hub-layout-presets') || '{}');
+var presetDismiss = null;
 var sessionNotes = JSON.parse(localStorage.getItem('claude-hub-notes') || '{}');
 var paneColors = JSON.parse(localStorage.getItem('claude-hub-colors') || '{}');
 var COLOR_PALETTE = ['', '#f85149', '#e3b341', '#3fb950', '#58a6ff', '#a371f7', '#f0883e', '#ec6547'];
@@ -1590,18 +1591,22 @@ function exportTerminal(sid) {
 function togglePresetPanel() {
   var panel = document.getElementById('preset-panel');
   var visible = panel.style.display !== 'none';
-  panel.style.display = visible ? 'none' : 'block';
-  if (!visible) {
+  if (visible) {
+    panel.style.display = 'none';
+    if (presetDismiss) { document.removeEventListener('mousedown', presetDismiss); presetDismiss = null; }
+  } else {
+    panel.style.display = 'block';
     renderPresetList();
     setTimeout(function() {
-      function dismiss(ev) {
+      presetDismiss = function(ev) {
         var btn = document.getElementById('btn-presets');
         if (!panel.contains(ev.target) && ev.target !== btn) {
           panel.style.display = 'none';
-          document.removeEventListener('mousedown', dismiss);
+          document.removeEventListener('mousedown', presetDismiss);
+          presetDismiss = null;
         }
-      }
-      document.addEventListener('mousedown', dismiss);
+      };
+      document.addEventListener('mousedown', presetDismiss);
     }, 0);
   }
 }
@@ -1611,13 +1616,23 @@ function renderPresetList() {
   if (!list) return;
   var keys = Object.keys(layoutPresets);
   if (!keys.length) { list.innerHTML = '<div class="preset-empty">No saved layouts yet</div>'; return; }
-  list.innerHTML = keys.map(function(name) {
-    var safe = JSON.stringify(name);
-    return '<div class="preset-item">' +
-      '<span class="preset-name" onclick="loadPreset(' + safe + ')">' + esc(name) + '</span>' +
-      '<button class="preset-del" onclick="deletePreset(' + safe + ')" title="Delete">&#x2715;</button>' +
-    '</div>';
-  }).join('');
+  list.innerHTML = '';
+  keys.forEach(function(name) {
+    var item = document.createElement('div');
+    item.className = 'preset-item';
+    var nameEl = document.createElement('span');
+    nameEl.className = 'preset-name';
+    nameEl.textContent = name;
+    nameEl.addEventListener('click', function() { loadPreset(name); });
+    var delBtn = document.createElement('button');
+    delBtn.className = 'preset-del';
+    delBtn.title = 'Delete';
+    delBtn.innerHTML = '&#x2715;';
+    delBtn.addEventListener('click', function(e) { e.stopPropagation(); deletePreset(name); });
+    item.appendChild(nameEl);
+    item.appendChild(delBtn);
+    list.appendChild(item);
+  });
 }
 
 function savePreset() {
@@ -1642,10 +1657,12 @@ function loadPreset(name) {
     var validIds = Object.values(state)
       .filter(function(s) { return (s.lane || 'active') === lane; })
       .map(function(s) { return s.id; });
-    saveLayoutTree(lane, reconcileTree(preset[lane], validIds));
+    var reconciled = reconcileTree(preset[lane], validIds);
+    if (reconciled) saveLayoutTree(lane, reconciled);
   });
   rebuildCanvas();
   document.getElementById('preset-panel').style.display = 'none';
+  if (presetDismiss) { document.removeEventListener('mousedown', presetDismiss); presetDismiss = null; }
   toast('Applied layout "' + name + '"');
 }
 
