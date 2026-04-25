@@ -564,7 +564,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
 .pane.zoomed { border-color:var(--blue) !important; box-shadow:0 0 0 2px var(--blue), var(--shadow-lg) !important; }
 .pane.zoomed [data-zoom]::before { content:'⊠'; }
 .pane:not(.zoomed) [data-zoom]::before { content:'⤢'; }
-[data-zoom] { font-style:normal; }
+button[data-zoom] { font-style:normal; }
 </style>
 </head>
 <body>
@@ -966,6 +966,7 @@ function rebuildGrid() {
       try { p.term.dispose(); } catch(_){}
       if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
       delete panes[sid];
+      if (zoomedSid === sid) zoomedSid = null;
       ['active','pending','done'].forEach(function(lane) {
         layoutTrees[lane] = removeFromTree(layoutTrees[lane], sid);
       });
@@ -1153,7 +1154,7 @@ function addPane(s) {
   pendingSplitTarget = null;
   var tree = addSidToTree(layoutTrees[lane], s.id, target, dir);
   saveLayoutTree(lane, tree);
-  if (lane === currentTab) rebuildCanvas();
+  if (lane === currentTab) { if (zoomedSid) zoomedSid = null; rebuildCanvas(); }
   updateTabCounts();
 }
 
@@ -1168,6 +1169,7 @@ function removePane(sid) {
   ['active','pending','done'].forEach(function(lane) {
     saveLayoutTree(lane, removeFromTree(layoutTrees[lane], sid));
   });
+  if (zoomedSid === sid) zoomedSid = null;
   rebuildCanvas();
   updateEmpty();
 }
