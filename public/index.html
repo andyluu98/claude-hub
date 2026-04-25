@@ -951,6 +951,7 @@ function rebuildCanvas() {
 
   // Filter mode: bypass tree, show flat list of matching panes
   if (sessionFilter) {
+    zoomedSid = null;
     var matchSids = getAllLeafSids(tree, []).filter(function(sid) {
       var s = state[sid];
       if (!s) return false;
@@ -965,6 +966,7 @@ function rebuildCanvas() {
       canvas.appendChild(noMatch);
       return;
     }
+    canvas.style.flexWrap = 'wrap';
     matchSids.forEach(function(sid) {
       var mp = panes[sid];
       if (!mp) return;
@@ -985,6 +987,7 @@ function rebuildCanvas() {
 
   // If a pane is zoomed and it belongs to this lane, show only that pane
   if (zoomedSid && panes[zoomedSid] && findLeaf(tree, zoomedSid)) {
+    canvas.style.flexWrap = '';
     var zp = panes[zoomedSid];
     zp.el.classList.add('zoomed');
     zp.el.style.flex = '1';
@@ -995,6 +998,7 @@ function rebuildCanvas() {
       openAndFitSubtree({ type: 'leaf', sessionId: zoomedSid });
     });
   } else {
+    canvas.style.flexWrap = '';
     if (zoomedSid) zoomedSid = null; // zoomed pane not in current lane — clear zoom
     renderTree(tree, canvas);
     requestAnimationFrame(function() { openAndFitSubtree(tree); });
@@ -1298,6 +1302,7 @@ var currentTab = localStorage.getItem('currentTab') || 'active';
 function switchTab(tab) {
   var _bb = document.getElementById('broadcast-bar');
   if (_bb && _bb.style.display !== 'none') { _bb.style.display = 'none'; document.getElementById('inp-broadcast').value = ''; }
+  if (sessionFilter) { sessionFilter = ''; document.getElementById('inp-filter').value = ''; }
   currentTab = tab;
   localStorage.setItem('currentTab', tab);
   document.querySelectorAll('#tab-bar button').forEach(function(b) {
@@ -2589,16 +2594,15 @@ document.addEventListener('keydown', function(kbEv) {
     }
     return;
   }
+  var kbLanes = ['active', 'pending', 'done'];
   if (kbEv.ctrlKey && kbEv.shiftKey && kbEv.key === ']') {
     kbEv.preventDefault();
-    var lanes = ['active', 'pending', 'done'];
-    switchTab(lanes[(lanes.indexOf(currentTab) + 1) % 3]);
+    switchTab(kbLanes[(kbLanes.indexOf(currentTab) + 1) % 3]);
     return;
   }
   if (kbEv.ctrlKey && kbEv.shiftKey && kbEv.key === '[') {
     kbEv.preventDefault();
-    var lanes = ['active', 'pending', 'done'];
-    switchTab(lanes[(lanes.indexOf(currentTab) + 2) % 3]);
+    switchTab(kbLanes[(kbLanes.indexOf(currentTab) + 2) % 3]);
     return;
   }
 });
