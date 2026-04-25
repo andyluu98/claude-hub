@@ -565,6 +565,13 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
 .pane.zoomed [data-zoom]::before { content:'⊠'; }
 .pane:not(.zoomed) [data-zoom]::before { content:'⤢'; }
 button[data-zoom] { font-style:normal; }
+#inp-filter { width:150px; background:rgba(13,17,23,.5); border:1px solid var(--border); color:var(--text); border-radius:7px; padding:6px 10px 6px 28px; font-size:12px; outline:none; transition:all .15s; font-family:inherit; }
+#inp-filter:focus { border-color:var(--blue); background:rgba(13,17,23,.8); box-shadow:0 0 0 3px rgba(88,166,255,.1); }
+#inp-filter::placeholder { color:var(--muted); }
+[data-theme="light"] #inp-filter { background:rgba(220,225,232,.85); }
+[data-theme="light"] #inp-filter:focus { background:#fff; }
+.filter-wrap { position:relative; display:flex; align-items:center; }
+.filter-wrap::before { content:'🔍'; position:absolute; left:8px; font-size:11px; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -595,6 +602,9 @@ button[data-zoom] { font-style:normal; }
     <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;font-weight:700" onclick="changeFontSize(-1)" title="Decrease font size">A−</button>
     <span id="btn-font-size" style="font-size:11px;color:var(--muted);min-width:28px;text-align:center"></span>
     <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;font-weight:700" onclick="changeFontSize(1)" title="Increase font size">A+</button>
+  </div>
+  <div class="filter-wrap">
+    <input id="inp-filter" type="text" placeholder="Filter sessions..." autocomplete="off">
   </div>
   <div style="flex:1"></div>
   <button class="btn btn-purple" onclick="toggleOverseer()">&#x1F9E0; Overseer</button>
@@ -674,6 +684,7 @@ button[data-zoom] { font-style:normal; }
 <script>
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
+var sessionFilter = '';
 function changeFontSize(delta) {
   termFontSize = Math.max(8, Math.min(24, termFontSize + delta));
   localStorage.setItem('claude-hub-fontsize', termFontSize);
@@ -898,6 +909,33 @@ function rebuildCanvas() {
   if (!tree) { updateEmpty(); return; }
   var emptyEl = document.getElementById('empty');
   if (emptyEl) emptyEl.remove();
+
+  // Filter mode: bypass tree, show flat list of matching panes
+  if (sessionFilter) {
+    var matchSids = getAllLeafSids(tree, []).filter(function(sid) {
+      var s = state[sid];
+      if (!s) return false;
+      return (s.name || '').toLowerCase().indexOf(sessionFilter) >= 0 ||
+             (s.cwd  || '').toLowerCase().indexOf(sessionFilter) >= 0;
+    });
+    if (!matchSids.length) { updateEmpty(); return; }
+    matchSids.forEach(function(sid) {
+      var mp = panes[sid];
+      if (!mp) return;
+      mp.el.classList.remove('zoomed');
+      mp.el.style.flex = '1 1 400px';
+      mp.el.style.minWidth = '200px';
+      mp.el.style.minHeight = '150px';
+      mp.el.style.maxWidth = '100%';
+      canvas.appendChild(mp.el);
+    });
+    requestAnimationFrame(function() {
+      matchSids.forEach(function(sid) {
+        openAndFitSubtree({ type: 'leaf', sessionId: sid });
+      });
+    });
+    return;
+  }
 
   // If a pane is zoomed and it belongs to this lane, show only that pane
   if (zoomedSid && panes[zoomedSid] && findLeaf(tree, zoomedSid)) {
@@ -2261,6 +2299,13 @@ document.addEventListener('keydown', function(kbEv) {
   }
 });
 
+document.getElementById('inp-filter').addEventListener('input', function() {
+  sessionFilter = this.value.trim().toLowerCase();
+  rebuildCanvas();
+});
+document.getElementById('inp-filter').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { this.value = ''; sessionFilter = ''; rebuildCanvas(); this.blur(); }
+});
 connectCtrl();
 </script>
 </body>
