@@ -926,16 +926,25 @@ function connectCtrl() {
 
 // ── Pane management (split-pane) ────────────────────────────────
 function rebuildGrid() {
-  // Tear down all existing terminals
+  // Diff: remove panes for sessions no longer in state
   Object.keys(panes).forEach(function(sid) {
-    var p = panes[sid];
-    try { p.ws.close(); } catch(_){}
-    try { p.term.dispose(); } catch(_){}
-    delete panes[sid];
+    if (!state[sid]) {
+      var p = panes[sid];
+      try { p.ws.close(); } catch(_){}
+      try { p.term.dispose(); } catch(_){}
+      if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
+      delete panes[sid];
+      ['active','pending','done'].forEach(function(lane) {
+        layoutTrees[lane] = removeFromTree(layoutTrees[lane], sid);
+      });
+    }
   });
-  // Create pane elements (no DOM placement yet)
-  Object.values(state).forEach(function(s) { createPaneElement(s); });
-  // Rebuild layout trees per lane
+  // Create panes for new sessions; update head for existing ones
+  Object.values(state).forEach(function(s) {
+    if (panes[s.id]) { updatePaneHead(s.id); }
+    else { createPaneElement(s); }
+  });
+  // Reconcile layout trees per lane
   loadSavedLayoutTrees();
   ['active','pending','done'].forEach(function(lane) {
     var validIds = Object.values(state)
@@ -1422,8 +1431,15 @@ function deleteBookmark(e, id) {
 
 // ── Actions ───────────────────────────────────────────────────────
 function newSession() {
-  var name = document.getElementById('inp-name').value.trim(); // co the trong → server auto-name
+  var name = document.getElementById('inp-name').value.trim();
   var autoAccept = document.getElementById('chk-auto').checked;
+  // Safety: clear pendingSplitTarget if session_created never arrives
+  if (pendingSplitTarget) {
+    var savedTarget = pendingSplitTarget;
+    setTimeout(function() {
+      if (pendingSplitTarget === savedTarget) pendingSplitTarget = null;
+    }, 5000);
+  }
   fetch('/api/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1477,13 +1493,14 @@ function sbRefresh() {
 }
 
 // Auto-poll every 2.5s to catch new files in the directory being viewed
-setInterval(function() {
+var sbPollInterval = setInterval(function() {
   var sb = document.getElementById('sidebar');
   if (!sbCurrentPath) return;
   if (sb.classList.contains('collapsed')) return;
   if (document.hidden) return;
   sbBrowse(sbCurrentPath, true);
 }, 2500);
+window.addEventListener('beforeunload', function() { clearInterval(sbPollInterval); });
 
 function sbBrowse(p, silent) {
   if (!p) return;
