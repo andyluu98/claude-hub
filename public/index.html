@@ -1547,12 +1547,14 @@ function exportTerminal(sid) {
   if (!p || !p.opened) { toast('Terminal not yet opened'); return; }
   var lines = [];
   var buf = p.term.buffer.active;
+  // buf.length = full active buffer including scrollback (intentional — exports all content)
   for (var i = 0; i < buf.length; i++) {
     var line = buf.getLine(i);
     if (line) lines.push(line.translateToString(true));
   }
   while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
   var text = lines.join('\n');
+  if (!text) { toast('Nothing to export (buffer is empty)'); return; }
   var s = state[sid];
   var safeName = (s ? s.name : sid).replace(/[^a-z0-9_\-]/gi, '_');
   var filename = safeName + '-' + Date.now() + '.txt';
