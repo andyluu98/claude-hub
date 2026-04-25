@@ -16,6 +16,32 @@
   --shadow-lg:0 12px 32px rgba(0,0,0,.5);
   --radius:10px;
 }
+[data-theme="light"] {
+  --bg:#f6f8fa; --bg2:#ffffff;
+  --panel:rgba(246,248,250,.95); --panel-solid:#ffffff;
+  --border:#d0d7de; --border-strong:#afb8c1;
+  --text:#1f2328; --text-dim:#424a53; --muted:#6e7781;
+  --shadow-md:0 4px 12px rgba(0,0,0,.1);
+  --shadow-lg:0 12px 32px rgba(0,0,0,.15);
+}
+[data-theme="light"] body {
+  background:
+    radial-gradient(at 80% 0%, rgba(163,113,247,.04), transparent 50%),
+    radial-gradient(at 0% 100%, rgba(88,166,255,.03), transparent 50%),
+    var(--bg);
+}
+[data-theme="light"] #canvas {
+  background:
+    radial-gradient(circle, rgba(0,0,0,.04) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--bg);
+}
+[data-theme="light"] .pane { background:rgba(255,255,255,.98); }
+[data-theme="light"] .pane-body { background:#ffffff; }
+[data-theme="light"] .pane-head {
+  background:linear-gradient(180deg, rgba(246,248,250,.98), rgba(240,243,246,.95));
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.15); background-clip:padding-box; }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.25); background-clip:padding-box; }
 * { box-sizing:border-box; margin:0; padding:0; }
 html, body { height:100%; }
 body {
@@ -31,8 +57,9 @@ body {
   letter-spacing:-.005em;
 }
 header {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:12px 22px;
+  display:flex; align-items:center; gap:12px;
+  padding:0 18px;
+  height:44px;
   background:var(--panel);
   backdrop-filter:blur(20px);
   -webkit-backdrop-filter:blur(20px);
@@ -40,29 +67,37 @@ header {
   flex-shrink:0;
 }
 header h1 {
-  font-size:15px; font-weight:650; letter-spacing:-.01em;
+  font-size:14px; font-weight:650; letter-spacing:-.01em;
   background:var(--accent); -webkit-background-clip:text;
   background-clip:text; color:transparent;
-  display:flex; align-items:center; gap:10px;
+  display:flex; align-items:center; gap:8px;
+  white-space:nowrap;
 }
 header h1::before {
-  content:''; display:inline-block; width:8px; height:8px; border-radius:50%;
-  background:var(--accent); box-shadow:0 0 12px rgba(163,113,247,.6);
+  content:''; display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:var(--accent); box-shadow:0 0 10px rgba(163,113,247,.6);
 }
-header h1 span { color:var(--muted); font-weight:400; font-size:12px; margin-left:4px; -webkit-text-fill-color:var(--muted); }
+header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-text-fill-color:var(--muted); }
 #ws-badge {
-  padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600;
+  padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600;
   background:rgba(110,118,129,.15); color:var(--muted);
   border:1px solid var(--border);
-  display:flex; align-items:center; gap:6px;
+  display:flex; align-items:center; gap:5px;
+  white-space:nowrap;
 }
 #ws-badge::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--muted); }
 #ws-badge.ok { background:rgba(63,185,80,.12); color:var(--green); border-color:rgba(63,185,80,.3); }
 #ws-badge.ok::before { background:var(--green); box-shadow:0 0 8px var(--green); }
+#btn-theme {
+  background:transparent; border:1px solid var(--border);
+  color:var(--muted); padding:4px 9px; border-radius:7px;
+  cursor:pointer; font-size:14px; transition:all .15s; line-height:1;
+}
+#btn-theme:hover { color:var(--text); border-color:var(--border-strong); background:rgba(255,255,255,.06); }
 
 #bar {
   display:flex; gap:8px; align-items:center;
-  padding:10px 22px;
+  padding:7px 18px;
   border-bottom:1px solid var(--border);
   flex-wrap:wrap; flex-shrink:0;
   background:var(--panel);
@@ -121,25 +156,6 @@ header h1 span { color:var(--muted); font-weight:400; font-size:12px; margin-lef
 .btn-purple  { background:rgba(163,113,247,.15); color:var(--purple); border-color:rgba(163,113,247,.3); }
 .btn-purple:hover { background:rgba(163,113,247,.25); }
 
-/* Preset layouts */
-.layout-sel {
-  display:flex; gap:2px;
-  background:rgba(13,17,23,.6);
-  border:1px solid var(--border);
-  border-radius:7px;
-  padding:3px;
-}
-.layout-sel button {
-  background:transparent; border:none; color:var(--muted);
-  padding:5px 11px; cursor:pointer; font-size:11px;
-  border-radius:5px; font-weight:500;
-  transition:all .12s; font-family:inherit;
-}
-.layout-sel button:hover { color:var(--text); background:rgba(255,255,255,.04); }
-.layout-sel button.active {
-  background:var(--accent); color:#fff; font-weight:600;
-  box-shadow:0 2px 8px rgba(88,166,255,.3);
-}
 
 /* Main workspace */
 #main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
@@ -233,21 +249,33 @@ header h1 span { color:var(--muted); font-weight:400; font-size:12px; margin-lef
 #overseer-pane.collapsed { max-height:36px; padding:8px 22px; overflow:hidden; }
 #overseer-pane.collapsed #overseer-rule { display:none; }
 
-/* Canvas: dot-grid background */
+/* Canvas + split-pane engine */
 #canvas {
-  flex:1; position:relative; overflow:hidden;
+  flex:1; display:flex; overflow:hidden; position:relative;
   background:
     radial-gradient(circle, rgba(255,255,255,.035) 1px, transparent 1px) 0 0 / 24px 24px,
     var(--bg);
 }
+.split-container {
+  display:flex; flex:1; min-width:0; min-height:0; overflow:hidden;
+}
+.split-container.dir-h { flex-direction:row; }
+.split-container.dir-v { flex-direction:column; }
+.split-child {
+  display:flex; min-width:0; min-height:0; overflow:hidden;
+}
+.divider {
+  flex-shrink:0; background:var(--border); transition:background .1s; position:relative; z-index:5;
+}
+.divider.dir-h { width:5px; cursor:col-resize; }
+.divider.dir-v { height:5px; cursor:row-resize; }
+.divider:hover, .divider.dragging { background:var(--blue); box-shadow:0 0 6px rgba(88,166,255,.4); }
 
 .pane {
-  position:absolute;
+  display:flex; flex-direction:column; overflow:hidden;
+  flex:1; min-width:200px; min-height:150px;
   background:rgba(7,9,13,.95);
   border:1px solid var(--border);
-  border-radius:var(--radius);
-  display:flex; flex-direction:column; overflow:hidden;
-  min-width:300px; min-height:200px;
   box-shadow:var(--shadow-md);
   transition:border-color .15s, box-shadow .15s;
 }
@@ -255,26 +283,15 @@ header h1 span { color:var(--muted); font-weight:400; font-size:12px; margin-lef
 .pane.active {
   border-color:var(--blue);
   box-shadow:0 0 0 1px var(--blue), 0 0 24px rgba(88,166,255,.2), var(--shadow-lg);
-  z-index:10;
 }
-.pane.dragging { opacity:.9; cursor:grabbing; }
 .pane-head {
-  padding:9px 12px;
+  padding:7px 10px;
   background:linear-gradient(180deg, rgba(30,36,45,.95), rgba(22,27,34,.9));
   border-bottom:1px solid var(--border);
   display:flex; align-items:center; gap:8px;
   flex-shrink:0; font-size:12px;
-  cursor:grab; user-select:none;
+  user-select:none;
 }
-.pane-head:active { cursor:grabbing; }
-.pane-resize {
-  position:absolute; right:2px; bottom:2px; width:14px; height:14px;
-  cursor:nwse-resize;
-  background:linear-gradient(135deg, transparent 55%, var(--muted) 55%, var(--muted) 62%, transparent 62%, transparent 72%, var(--muted) 72%, var(--muted) 79%, transparent 79%);
-  opacity:.6;
-  border-bottom-right-radius:6px;
-}
-.pane-resize:hover { opacity:1; }
 .pane-head .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; transition:all .2s; }
 .pane-head .dot.running { background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 2s ease-in-out infinite; }
 .pane-head .dot.stopped { background:var(--orange); box-shadow:0 0 6px rgba(227,179,65,.5); }
@@ -285,10 +302,6 @@ header h1 span { color:var(--muted); font-weight:400; font-size:12px; margin-lef
 .pane[data-status="stopped"] [data-kill]   { display:none; }
 .pane[data-status="stopped"] .pane-body    { opacity:.7; }
 
-/* Lane filter: body class .view-{lane} shows only panes in that lane */
-body:not(.view-active)  .pane[data-lane="active"]  { display:none !important; }
-body:not(.view-pending) .pane[data-lane="pending"] { display:none !important; }
-body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
 
 /* Lane buttons trong pane head */
 .pane-head .lane-btns { display:flex; gap:2px; margin-left:6px; }
@@ -303,27 +316,25 @@ body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
   box-shadow:0 0 8px rgba(88,166,255,.5);
 }
 
-/* Tab bar */
+/* Tab bar — lives inside header */
 #tab-bar {
-  display:flex; gap:4px; padding:8px 22px; background:var(--panel);
-  border-bottom:1px solid var(--border);
+  display:flex; gap:3px;
 }
 #tab-bar button {
-  padding:8px 18px; background:transparent; color:var(--text-dim);
-  border:1px solid var(--border); border-radius:8px; cursor:pointer;
-  font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px;
+  padding:5px 12px; background:transparent; color:var(--text-dim);
+  border:1px solid transparent; border-radius:6px; cursor:pointer;
+  font-size:12px; font-weight:600; display:flex; align-items:center; gap:6px;
   transition:all .15s;
 }
-#tab-bar button:hover { background:rgba(255,255,255,.04); color:var(--text); }
+#tab-bar button:hover { background:rgba(255,255,255,.06); color:var(--text); }
 #tab-bar button.active {
-  background:var(--accent); color:#fff; border-color:transparent;
-  box-shadow:0 4px 14px rgba(88,166,255,.3);
+  background:rgba(88,166,255,.15); color:var(--blue); border-color:rgba(88,166,255,.3);
 }
 #tab-bar button .cnt {
-  background:rgba(0,0,0,.25); padding:1px 7px; border-radius:10px;
-  font-size:11px; min-width:20px; text-align:center;
+  background:rgba(0,0,0,.2); padding:1px 6px; border-radius:8px;
+  font-size:10px; min-width:18px; text-align:center;
 }
-#tab-bar button.active .cnt { background:rgba(255,255,255,.25); }
+#tab-bar button.active .cnt { background:rgba(88,166,255,.2); }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.55;} }
 
 .pane-head .nm {
@@ -535,35 +546,28 @@ body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
 <body>
 
 <header>
-  <h1>&#x1F916; Claude Hub v4 <span id="hdr-count">0 sessions</span></h1>
+  <h1>&#x1F916; Claude Hub <span id="hdr-count">0 sessions</span></h1>
+  <div id="tab-bar">
+    <button data-tab="active"  class="active">&#x1F525; Active <span class="cnt" id="cnt-active">0</span></button>
+    <button data-tab="pending">&#x23F8; Pending <span class="cnt" id="cnt-pending">0</span></button>
+    <button data-tab="done">&#x2705; Done <span class="cnt" id="cnt-done">0</span></button>
+  </div>
+  <div style="flex:1"></div>
+  <button id="btn-theme" title="Toggle light/dark theme" onclick="applyTheme()">&#x2600;</button>
   <div id="ws-badge">&#x25CF; ...</div>
 </header>
 
 <div id="folder-pop"></div>
 <div id="ctx-menu"></div>
 
-<div id="tab-bar">
-  <button data-tab="active"  class="active">&#x1F525; Active  <span class="cnt" id="cnt-active">0</span></button>
-  <button data-tab="pending">&#x23F8; Pending <span class="cnt" id="cnt-pending">0</span></button>
-  <button data-tab="done">&#x2705; Done     <span class="cnt" id="cnt-done">0</span></button>
-</div>
-
 <div id="bar">
-  <input id="inp-name" type="text" placeholder="Ten task (tu trong = auto)...">
+  <input id="inp-name" type="text" placeholder="Task name (optional)...">
   <button id="btn-cwd">&#x1F4C1; (home)</button>
   <label class="chk"><input type="checkbox" id="chk-auto" checked> &#x26A1; Auto-accept</label>
   <button class="btn btn-primary" onclick="newSession()">+ New Session</button>
   <button class="btn btn-primary" onclick="resumeAll()" title="Restart all stopped sessions">&#x25B6; Resume All</button>
   <button class="btn btn-ghost" onclick="killAll()">Stop All</button>
   <div style="flex:1"></div>
-  <div class="layout-sel" id="layout-sel">
-    <button data-layout="tile" class="active" title="Tile layout">&#x25A6; Tile</button>
-    <button data-layout="cols" title="Column layout">&#x2590;&#x2590; Cols</button>
-    <button data-layout="rows" title="Row layout">&#x2630; Rows</button>
-    <button data-layout="cascade" title="Cascade layout">&#x25A3; Cascade</button>
-    <button data-layout="focus" title="Focus mode">&#x26F6; Focus</button>
-  </div>
-  <button class="btn btn-ghost" onclick="resetLayout()" title="Reset positions">&#x27F3;</button>
   <button class="btn btn-purple" onclick="toggleOverseer()">&#x1F9E0; Overseer</button>
 </div>
 
@@ -607,7 +611,7 @@ body:not(.view-done)    .pane[data-lane="done"]    { display:none !important; }
         <div>
           <h2 style="color:var(--text);margin-bottom:6px;font-size:18px">No sessions yet</h2>
           <p>Pick a project folder and click "+ New Session"</p>
-          <p style="font-size:11px;margin-top:12px;color:var(--muted)">Tip: drag header to move, drag bottom-right corner to resize · Click pane to show file explorer in sidebar</p>
+          <p style="font-size:11px;margin-top:12px;color:var(--muted)">Tip: use &#x229E;/&#x229F; on any pane header to split right/down · Click pane to show file explorer in sidebar</p>
         </div>
       </div>
     </div>
@@ -644,6 +648,203 @@ var panes = {};      // sessionId -> { term, ws, fit, el }
 var ctrlWs, retryCount = 0;
 var selectedCwd = '';
 var currentBrowse = null;
+
+// ── Theme ──────────────────────────────────────────────────────────
+var TERM_THEME_DARK = {
+  background:'#000000', foreground:'#e6edf3',
+  cursor:'#58a6ff', selectionBackground:'rgba(88,166,255,.3)'
+};
+var TERM_THEME_LIGHT = {
+  background:'#ffffff', foreground:'#1f2328',
+  cursor:'#0550ae', selectionBackground:'rgba(88,166,255,.3)',
+  black:'#24292f', red:'#cf222e', green:'#116329',
+  yellow:'#4d2d00', blue:'#0550ae', magenta:'#8250df',
+  cyan:'#1b7c83', white:'#6e7781',
+  brightBlack:'#57606a', brightRed:'#a40e26', brightGreen:'#1a7f37',
+  brightYellow:'#633c01', brightBlue:'#0969da', brightMagenta:'#6639ba',
+  brightCyan:'#3192aa', brightWhite:'#8c959f'
+};
+var currentTheme = localStorage.getItem('claude-hub-theme') || 'dark';
+function applyTheme(forceTheme) {
+  if (forceTheme) {
+    currentTheme = forceTheme;
+  } else {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  }
+  localStorage.setItem('claude-hub-theme', currentTheme);
+  var html = document.documentElement;
+  var btn = document.getElementById('btn-theme');
+  if (currentTheme === 'light') {
+    html.setAttribute('data-theme', 'light');
+    if (btn) btn.textContent = '🌙';
+  } else {
+    html.removeAttribute('data-theme');
+    if (btn) btn.textContent = '☀';
+  }
+  var theme = currentTheme === 'light' ? TERM_THEME_LIGHT : TERM_THEME_DARK;
+  Object.values(panes).forEach(function(p) {
+    try { p.term.options.theme = theme; } catch(_){}
+  });
+}
+
+// ── Split-pane layout trees ────────────────────────────────────────
+var layoutTrees = { active: null, pending: null, done: null };
+var pendingSplitTarget = null; // { sid, dir, lane } set before newSession()
+
+function saveLayoutTree(lane, tree) {
+  layoutTrees[lane] = tree;
+  try { localStorage.setItem('layoutTree-' + lane, JSON.stringify(tree)); } catch(_){}
+}
+function loadSavedLayoutTrees() {
+  ['active','pending','done'].forEach(function(lane) {
+    try {
+      var s = localStorage.getItem('layoutTree-' + lane);
+      if (s) layoutTrees[lane] = JSON.parse(s);
+    } catch(_){}
+  });
+}
+function findLeaf(node, sid) {
+  if (!node) return null;
+  if (node.type === 'leaf') return node.sessionId === sid ? node : null;
+  return findLeaf(node.children[0], sid) || findLeaf(node.children[1], sid);
+}
+function getLastLeafSid(node) {
+  if (!node) return null;
+  if (node.type === 'leaf') return node.sessionId;
+  return getLastLeafSid(node.children[1]) || getLastLeafSid(node.children[0]);
+}
+function getAllLeafSids(node, out) {
+  if (!node) return out;
+  out = out || [];
+  if (node.type === 'leaf') { out.push(node.sessionId); return out; }
+  getAllLeafSids(node.children[0], out);
+  getAllLeafSids(node.children[1], out);
+  return out;
+}
+function splitTreeAt(tree, targetSid, newSid, dir) {
+  if (!tree) return { type:'leaf', sessionId: newSid };
+  if (tree.type === 'leaf') {
+    if (tree.sessionId !== targetSid) return tree;
+    return { type:'split', dir:dir, ratio:0.5, children:[
+      { type:'leaf', sessionId: targetSid },
+      { type:'leaf', sessionId: newSid }
+    ]};
+  }
+  return { type:'split', dir:tree.dir, ratio:tree.ratio, children:[
+    splitTreeAt(tree.children[0], targetSid, newSid, dir),
+    splitTreeAt(tree.children[1], targetSid, newSid, dir)
+  ]};
+}
+function removeFromTree(tree, sid) {
+  if (!tree) return null;
+  if (tree.type === 'leaf') return tree.sessionId === sid ? null : tree;
+  var a = removeFromTree(tree.children[0], sid);
+  var b = removeFromTree(tree.children[1], sid);
+  if (!a && !b) return null;
+  if (!a) return b;
+  if (!b) return a;
+  return { type:'split', dir:tree.dir, ratio:tree.ratio, children:[a, b] };
+}
+function reconcileTree(tree, validIds) {
+  if (!tree) return null;
+  if (tree.type === 'leaf') return validIds.indexOf(tree.sessionId) >= 0 ? tree : null;
+  var a = reconcileTree(tree.children[0], validIds);
+  var b = reconcileTree(tree.children[1], validIds);
+  if (!a && !b) return null;
+  if (!a) return b;
+  if (!b) return a;
+  return { type:'split', dir:tree.dir, ratio:tree.ratio, children:[a, b] };
+}
+function addSidToTree(tree, newSid, splitSid, dir) {
+  var target = splitSid || getLastLeafSid(tree);
+  if (!target) return { type:'leaf', sessionId: newSid };
+  return splitTreeAt(tree, target, newSid, dir || 'h');
+}
+
+// ── renderTree + divider drag ──────────────────────────────────────
+function fitSubtree(node) {
+  if (!node) return;
+  if (node.type === 'leaf') {
+    var p = panes[node.sessionId];
+    if (p) { try { p.fit.fit(); } catch(_){} }
+  } else {
+    fitSubtree(node.children[0]);
+    fitSubtree(node.children[1]);
+  }
+}
+function makeDividerDraggable(divider, node, wrapA, container, isH) {
+  divider.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    divider.classList.add('dragging');
+    var startPos = isH ? e.clientX : e.clientY;
+    function onMove(ev) {
+      var totalSize = isH ? container.offsetWidth : container.offsetHeight;
+      if (totalSize < 10) return;
+      var delta = (isH ? ev.clientX : ev.clientY) - startPos;
+      startPos = isH ? ev.clientX : ev.clientY;
+      var newRatio = node.ratio + delta / totalSize;
+      newRatio = Math.max(0.1, Math.min(0.9, newRatio));
+      node.ratio = newRatio;
+      wrapA.style.flex = '0 0 calc(' + (newRatio * 100) + '% - 3px)';
+      fitSubtree(node.children[0]);
+      fitSubtree(node.children[1]);
+    }
+    function onUp() {
+      divider.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      saveLayoutTree(currentTab, layoutTrees[currentTab]);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+function renderTree(node, el) {
+  if (!node) return;
+  if (node.type === 'leaf') {
+    var p = panes[node.sessionId];
+    if (!p) return;
+    p.el.style.flex = '1';
+    p.el.style.minWidth = '0';
+    p.el.style.minHeight = '0';
+    el.appendChild(p.el);
+  } else {
+    var isH = node.dir === 'h';
+    var container = document.createElement('div');
+    container.className = 'split-container dir-' + node.dir;
+    el.appendChild(container);
+    var wrapA = document.createElement('div');
+    wrapA.className = 'split-child';
+    wrapA.style.flex = '0 0 calc(' + (node.ratio * 100) + '% - 3px)';
+    container.appendChild(wrapA);
+    renderTree(node.children[0], wrapA);
+    var divider = document.createElement('div');
+    divider.className = 'divider dir-' + node.dir;
+    container.appendChild(divider);
+    var wrapB = document.createElement('div');
+    wrapB.className = 'split-child';
+    wrapB.style.flex = '1';
+    container.appendChild(wrapB);
+    renderTree(node.children[1], wrapB);
+    makeDividerDraggable(divider, node, wrapA, container, isH);
+  }
+}
+function rebuildCanvas() {
+  var canvas = document.getElementById('canvas');
+  var dropOverlay = document.getElementById('canvas-drop-overlay');
+  // Detach pane elements before clearing so terminals aren't destroyed
+  Object.values(panes).forEach(function(p) {
+    if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
+  });
+  canvas.innerHTML = '';
+  if (dropOverlay) canvas.appendChild(dropOverlay);
+  var tree = layoutTrees[currentTab];
+  if (!tree) { updateEmpty(); return; }
+  var emptyEl = document.getElementById('empty');
+  if (emptyEl) emptyEl.remove();
+  renderTree(tree, canvas);
+  setTimeout(function() { fitSubtree(tree); }, 60);
+}
 
 // ── Control WebSocket ─────────────────────────────────────────────
 function connectCtrl() {
@@ -684,15 +885,32 @@ function connectCtrl() {
   };
 }
 
-// ── Pane management (free-form draggable) ───────────────────────
-var zIndexTop = 10;
-var currentLayout = localStorage.getItem('layout') || 'tile';
-var savedPositions = JSON.parse(localStorage.getItem('panePositions') || '{}');
-
+// ── Pane management (split-pane) ────────────────────────────────
 function rebuildGrid() {
-  Object.keys(panes).forEach(removePane);
-  Object.values(state).forEach(addPane);
-  updateEmpty();
+  // Tear down all existing terminals
+  Object.keys(panes).forEach(function(sid) {
+    var p = panes[sid];
+    try { p.ws.close(); } catch(_){}
+    try { p.term.dispose(); } catch(_){}
+    delete panes[sid];
+  });
+  // Create pane elements (no DOM placement yet)
+  Object.values(state).forEach(function(s) { createPaneElement(s); });
+  // Rebuild layout trees per lane
+  loadSavedLayoutTrees();
+  ['active','pending','done'].forEach(function(lane) {
+    var validIds = Object.values(state)
+      .filter(function(s) { return (s.lane || 'active') === lane; })
+      .map(function(s) { return s.id; });
+    var tree = reconcileTree(layoutTrees[lane], validIds);
+    validIds.forEach(function(sid) {
+      if (!findLeaf(tree, sid)) {
+        tree = addSidToTree(tree, sid, getLastLeafSid(tree), 'h');
+      }
+    });
+    saveLayoutTree(lane, tree);
+  });
+  rebuildCanvas();
 }
 
 // Paste from clipboard: image (save to file, send @path) or text
@@ -740,9 +958,8 @@ function pasteTextFromClipboard(ws) {
   }).catch(function(err) { toast('Paste error: ' + err.message); });
 }
 
-function addPane(s) {
-  hideEmpty();
-  var canvas = document.getElementById('canvas');
+function createPaneElement(s) {
+  if (panes[s.id]) return;
   var el = document.createElement('div');
   el.className = 'pane';
   el.id = 'pane-' + s.id;
@@ -760,98 +977,33 @@ function addPane(s) {
         '<button title="Move to Pending" data-lane-set="pending" data-sid="' + s.id + '" class="' + (lane==='pending'?'on':'') + '">P</button>' +
         '<button title="Move to Done"    data-lane-set="done"    data-sid="' + s.id + '" class="' + (lane==='done'?'on':'') + '">D</button>' +
       '</span>' +
+      '<button title="Split right" data-split-h="' + s.id + '">&#x229E;</button>' +
+      '<button title="Split down"  data-split-v="' + s.id + '">&#x229F;</button>' +
       '<button title="Open folder" data-folder="' + s.id + '">&#x1F4C1;</button>' +
       '<button title="Resume" data-resume="' + s.id + '">&#x25B6;</button>' +
       '<button title="Stop (keep session)" data-kill="' + s.id + '">&#x25A0;</button>' +
       '<button title="Delete permanently" data-remove="' + s.id + '">&times;</button>' +
     '</div>' +
-    '<div class="pane-body"><div class="xterm-wrap" id="term-' + s.id + '"></div></div>' +
-    '<div class="pane-resize"></div>';
-  canvas.appendChild(el);
+    '<div class="pane-body"><div class="xterm-wrap" id="term-' + s.id + '"></div></div>';
 
-  // Restore position hoac auto-layout
-  var pos = savedPositions[s.id];
-  if (pos) {
-    applyPos(el, pos);
-  } else {
-    // Default position: cascade
-    var idx = Object.keys(panes).length;
-    applyPos(el, { x: 20 + idx * 30, y: 20 + idx * 30, w: 560, h: 340 });
-  }
+  // Mount into off-screen holder so xterm can initialize
+  var holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:800px;height:400px;overflow:hidden;';
+  document.body.appendChild(holder);
+  holder.appendChild(el);
 
-  // xterm
+  var termTheme = currentTheme === 'light' ? TERM_THEME_LIGHT : TERM_THEME_DARK;
   var term = new Terminal({
     fontFamily: 'Consolas, "Courier New", monospace',
     fontSize: 12,
-    theme: { background:'#000000', foreground:'#e6edf3', cursor:'#58a6ff' },
+    theme: termTheme,
     cursorBlink: true, scrollback: 5000, allowProposedApi: true,
   });
   var fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
   term.open(document.getElementById('term-' + s.id));
-
-  // Intercept keyboard: Ctrl+C (copy selection), Ctrl+V (paste), Shift+Insert (paste)
-  term.attachCustomKeyEventHandler(function(ev) {
-    if (ev.type !== 'keydown') return true;
-    // Ctrl+C: if selection → copy text, otherwise send SIGINT as normal
-    if (ev.ctrlKey && (ev.key === 'c' || ev.key === 'C') && !ev.shiftKey) {
-      var sel = term.getSelection();
-      if (sel && sel.length > 0) {
-        ev.preventDefault();
-        navigator.clipboard.writeText(sel).then(function() { toast('Copied ' + sel.length + ' chars'); term.clearSelection(); });
-        return false;
-      }
-      return true; // no selection → send Ctrl+C (SIGINT) as normal
-    }
-    // Shift+Enter: newline in Claude CLI
-    if (ev.shiftKey && ev.key === 'Enter') {
-      ev.preventDefault();
-      // Claude CLI TUI: Shift+Enter = ESC then Enter hoac CSI u sequence
-      if (ws.readyState === 1) ws.send(String.fromCharCode(27) + '[13;2u');
-      return false;
-    }
-    // Ctrl+V / Shift+Insert: paste (text + image)
-    var isPaste = (ev.ctrlKey && (ev.key === 'v' || ev.key === 'V')) ||
-                  (ev.shiftKey && ev.key === 'Insert');
-    if (!isPaste) return true;
-    ev.preventDefault();
-    // Try paste image first, then text
-    pasteFromClipboard(ws, s.id);
-    return false;
-  });
-
-  // Right-click paste (text + image)
-  var termEl = document.getElementById('term-' + s.id);
-  termEl.addEventListener('contextmenu', function(ev) {
-    ev.preventDefault();
-    pasteFromClipboard(ws, s.id);
-  });
-
-  // Middle-click paste
-  termEl.addEventListener('auxclick', function(ev) {
-    if (ev.button !== 1) return;
-    ev.preventDefault();
-    pasteFromClipboard(ws, s.id);
-  });
-
-  // Drag file/image into terminal → send @path
-  termEl.addEventListener('dragover', function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
-  termEl.addEventListener('drop', function(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    var files = ev.dataTransfer.files;
-    if (!files || !files.length) return;
-    for (var fi = 0; fi < files.length; fi++) {
-      var fp = files[fi].path || files[fi].name;
-      if (fp && ws.readyState === 1) {
-        var sObj = state[s.id];
-        var rel = relOrAbs(fp, sObj ? sObj.cwd : '');
-        var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
-        ws.send('@' + ref + ' ');
-      }
-    }
-    toast('Sent ' + files.length + ' file(s) to terminal');
-  });
+  document.body.removeChild(holder);
+  // el is now detached from DOM — renderTree will place it
 
   var ws = new WebSocket('ws://' + location.host + '/term/' + s.id);
   ws.binaryType = 'arraybuffer';
@@ -869,42 +1021,64 @@ function addPane(s) {
     if (ws.readyState === 1) ws.send(JSON.stringify({ type:'resize', cols:sz.cols, rows:sz.rows }));
   });
 
+  term.attachCustomKeyEventHandler(function(ev) {
+    if (ev.type !== 'keydown') return true;
+    if (ev.ctrlKey && (ev.key === 'c' || ev.key === 'C') && !ev.shiftKey) {
+      var sel = term.getSelection();
+      if (sel && sel.length > 0) {
+        ev.preventDefault();
+        navigator.clipboard.writeText(sel).then(function() { toast('Copied ' + sel.length + ' chars'); term.clearSelection(); });
+        return false;
+      }
+      return true;
+    }
+    if (ev.shiftKey && ev.key === 'Enter') {
+      ev.preventDefault();
+      if (ws.readyState === 1) ws.send(String.fromCharCode(27) + '[13;2u');
+      return false;
+    }
+    var isPaste = (ev.ctrlKey && (ev.key === 'v' || ev.key === 'V')) || (ev.shiftKey && ev.key === 'Insert');
+    if (!isPaste) return true;
+    ev.preventDefault();
+    pasteFromClipboard(ws, s.id);
+    return false;
+  });
+
+  var termEl = document.getElementById('term-' + s.id);
+  termEl.addEventListener('contextmenu', function(ev) { ev.preventDefault(); pasteFromClipboard(ws, s.id); });
+  termEl.addEventListener('auxclick', function(ev) { if (ev.button !== 1) return; ev.preventDefault(); pasteFromClipboard(ws, s.id); });
+  termEl.addEventListener('dragover', function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
+  termEl.addEventListener('drop', function(ev) {
+    ev.preventDefault(); ev.stopPropagation();
+    var files = ev.dataTransfer.files;
+    if (!files || !files.length) return;
+    for (var fi = 0; fi < files.length; fi++) {
+      var fp = files[fi].path || files[fi].name;
+      if (fp && ws.readyState === 1) {
+        var sObj = state[s.id];
+        var rel = relOrAbs(fp, sObj ? sObj.cwd : '');
+        var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
+        ws.send('@' + ref + ' ');
+      }
+    }
+    toast('Sent ' + files.length + ' file(s) to terminal');
+  });
+
   panes[s.id] = { term: term, ws: ws, fit: fit, el: el };
-
-  // Drag
-  makeDraggable(el, s.id);
-  makeResizable(el, s.id);
-
-  setTimeout(function() { try { fit.fit(); } catch(_){} }, 200);
-
-  // Debounced preset layout — avoid thrash when bulk loading sessions
-  if (!pos) scheduleRelayout();
 }
 
-var _relayoutTimer = null;
-function scheduleRelayout() {
-  if (_relayoutTimer) clearTimeout(_relayoutTimer);
-  _relayoutTimer = setTimeout(function() {
-    _relayoutTimer = null;
-    applyPresetLayout();
-  }, 80);
-}
-
-function applyPos(el, p) {
-  el.style.left = p.x + 'px';
-  el.style.top = p.y + 'px';
-  el.style.width = p.w + 'px';
-  el.style.height = p.h + 'px';
-}
-
-function savePos(sid) {
-  var p = panes[sid];
-  if (!p) return;
-  savedPositions[sid] = {
-    x: parseInt(p.el.style.left), y: parseInt(p.el.style.top),
-    w: parseInt(p.el.style.width), h: parseInt(p.el.style.height),
-  };
-  localStorage.setItem('panePositions', JSON.stringify(savedPositions));
+function addPane(s) {
+  createPaneElement(s);
+  var lane = s.lane || 'active';
+  var target = (pendingSplitTarget && pendingSplitTarget.lane === lane)
+    ? pendingSplitTarget.sid : getLastLeafSid(layoutTrees[lane]);
+  var dir = (pendingSplitTarget && pendingSplitTarget.lane === lane)
+    ? pendingSplitTarget.dir : 'h';
+  pendingSplitTarget = null;
+  var tree = addSidToTree(layoutTrees[lane], s.id, target, dir);
+  saveLayoutTree(lane, tree);
+  if (lane === currentTab) rebuildCanvas();
+  updateTabCounts();
 }
 
 function removePane(sid) {
@@ -912,11 +1086,13 @@ function removePane(sid) {
   if (p) {
     try { p.ws.close(); } catch(_){}
     try { p.term.dispose(); } catch(_){}
-    try { p.el.remove(); } catch(_){}
+    if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
     delete panes[sid];
   }
-  delete savedPositions[sid];
-  localStorage.setItem('panePositions', JSON.stringify(savedPositions));
+  ['active','pending','done'].forEach(function(lane) {
+    saveLayoutTree(lane, removeFromTree(layoutTrees[lane], sid));
+  });
+  rebuildCanvas();
   updateEmpty();
 }
 
@@ -927,12 +1103,18 @@ function updatePaneHead(sid) {
   if (dot) dot.className = 'dot ' + s.status;
   p.el.dataset.status = s.status;
   var prevLane = p.el.dataset.lane;
-  p.el.dataset.lane = s.lane || 'active';
-  if (prevLane !== p.el.dataset.lane) scheduleRelayout();
-  // Update lane button highlight
+  var newLane = s.lane || 'active';
+  p.el.dataset.lane = newLane;
+  if (prevLane !== newLane) {
+    var oldTree = removeFromTree(layoutTrees[prevLane], sid);
+    saveLayoutTree(prevLane, oldTree);
+    var newTree = addSidToTree(layoutTrees[newLane], sid, getLastLeafSid(layoutTrees[newLane]), 'h');
+    saveLayoutTree(newLane, newTree);
+    if (prevLane === currentTab || newLane === currentTab) rebuildCanvas();
+  }
   var btns = p.el.querySelectorAll('[data-lane-set]');
   btns.forEach(function(b) {
-    if (b.dataset.laneSet === (s.lane || 'active')) b.classList.add('on');
+    if (b.dataset.laneSet === newLane) b.classList.add('on');
     else b.classList.remove('on');
   });
   updateTabCounts();
@@ -946,23 +1128,15 @@ function updateTabCounts() {
   document.getElementById('cnt-done').textContent    = c.done;
 }
 
-// Tab switcher: swap body class → CSS filter panes by lane
+// Tab switcher
 var currentTab = localStorage.getItem('currentTab') || 'active';
 function switchTab(tab) {
   currentTab = tab;
   localStorage.setItem('currentTab', tab);
-  document.body.classList.remove('view-active','view-pending','view-done');
-  document.body.classList.add('view-' + tab);
   document.querySelectorAll('#tab-bar button').forEach(function(b) {
     b.classList.toggle('active', b.dataset.tab === tab);
   });
-  // Re-layout + re-fit for new lane
-  setTimeout(function() {
-    applyPresetLayout();
-    Object.values(panes).forEach(function(p) {
-      try { if (p.el.offsetParent) p.fit.fit(); } catch(_){}
-    });
-  }, 50);
+  rebuildCanvas();
 }
 document.getElementById('tab-bar').addEventListener('click', function(e) {
   var btn = e.target.closest('[data-tab]');
@@ -977,148 +1151,33 @@ function updateEmpty() {
       var d = document.createElement('div');
       d.id = 'empty';
       d.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center';
-      d.innerHTML = '<div><h2 style="color:var(--text);margin-bottom:6px;font-size:18px">No sessions yet</h2><p>Pick a project folder and click "+ New Session"</p><p style="font-size:11px;margin-top:12px;color:var(--muted)">Tip: drag header to move, drag bottom-right corner to resize</p></div>';
+      d.innerHTML = '<div><h2 style="color:var(--text);margin-bottom:6px;font-size:18px">No sessions yet</h2><p>Pick a project folder and click "+ New Session"</p><p style="font-size:11px;margin-top:12px;color:var(--muted)">Tip: use &#x229E; / &#x229F; on any pane header to split right or down</p></div>';
       document.getElementById('canvas').appendChild(d);
     }
   } else if (existing) existing.remove();
 }
 function hideEmpty() { var e = document.getElementById('empty'); if (e) e.remove(); }
 
-// ── Drag & Resize ────────────────────────────────────────────────
-function makeDraggable(el, sid) {
-  var head = el.querySelector('.pane-head');
-  head.addEventListener('mousedown', function(e) {
-    if (e.target.closest('button')) return;
-    focusPane(sid);
-    var startX = e.clientX, startY = e.clientY;
-    var origX = parseInt(el.style.left), origY = parseInt(el.style.top);
-    el.classList.add('dragging');
-    function onMove(ev) {
-      el.style.left = Math.max(0, origX + ev.clientX - startX) + 'px';
-      el.style.top  = Math.max(0, origY + ev.clientY - startY) + 'px';
-    }
-    function onUp() {
-      el.classList.remove('dragging');
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      savePos(sid);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    e.preventDefault();
-  });
-}
-
-function makeResizable(el, sid) {
-  var handle = el.querySelector('.pane-resize');
-  handle.addEventListener('mousedown', function(e) {
-    focusPane(sid);
-    var startX = e.clientX, startY = e.clientY;
-    var origW = parseInt(el.style.width), origH = parseInt(el.style.height);
-    function onMove(ev) {
-      el.style.width  = Math.max(280, origW + ev.clientX - startX) + 'px';
-      el.style.height = Math.max(180, origH + ev.clientY - startY) + 'px';
-      try { panes[sid].fit.fit(); } catch(_){}
-    }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      savePos(sid);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    e.preventDefault();
-    e.stopPropagation();
-  });
-}
-
 function focusPane(sid) {
   var p = panes[sid];
   if (!p) return;
   document.querySelectorAll('.pane.active').forEach(function(x) { x.classList.remove('active'); });
   p.el.classList.add('active');
-  p.el.style.zIndex = ++zIndexTop;
   try { p.term.focus(); } catch(_){}
 }
 
-// ── Preset layouts ───────────────────────────────────────────────
-function applyPresetLayout() {
-  // Only layout panes belonging to current lane (visible)
-  var ids = Object.keys(panes).filter(function(sid) {
-    var s = state[sid];
-    return s && (s.lane || 'active') === currentTab;
-  });
-  if (!ids.length) return;
-  var canvas = document.getElementById('canvas');
-  var W = canvas.clientWidth, H = canvas.clientHeight;
-  var n = ids.length;
 
-  if (currentLayout === 'tile') {
-    var cols = Math.ceil(Math.sqrt(n));
-    var rows = Math.ceil(n / cols);
-    var w = Math.floor(W / cols) - 8;
-    var h = Math.floor(H / rows) - 8;
-    ids.forEach(function(sid, i) {
-      var r = Math.floor(i / cols), c = i % cols;
-      applyPos(panes[sid].el, { x: c * (w + 8) + 4, y: r * (h + 8) + 4, w: w, h: h });
-    });
-  } else if (currentLayout === 'cols') {
-    var w = Math.floor(W / n) - 8;
-    ids.forEach(function(sid, i) {
-      applyPos(panes[sid].el, { x: i * (w + 8) + 4, y: 4, w: w, h: H - 12 });
-    });
-  } else if (currentLayout === 'rows') {
-    var h = Math.floor(H / n) - 8;
-    ids.forEach(function(sid, i) {
-      applyPos(panes[sid].el, { x: 4, y: i * (h + 8) + 4, w: W - 12, h: h });
-    });
-  } else if (currentLayout === 'cascade') {
-    ids.forEach(function(sid, i) {
-      applyPos(panes[sid].el, { x: 20 + i * 34, y: 20 + i * 34, w: Math.min(700, W - 100), h: Math.min(450, H - 100) });
-    });
-  } else if (currentLayout === 'focus') {
-    // 1 pane full, cac pane khac minimize ve goc
-    ids.forEach(function(sid, i) {
-      if (i === 0) applyPos(panes[sid].el, { x: 4, y: 4, w: W - 12, h: H - 12 });
-      else applyPos(panes[sid].el, { x: 10 + (i-1) * 310, y: H - 50, w: 300, h: 44 });
-    });
-  }
-
-  // Save all positions
-  ids.forEach(function(sid) { savePos(sid); });
-  setTimeout(function() {
-    Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
-  }, 50);
+function requestSplit(sid, dir) {
+  var lane = state[sid] ? (state[sid].lane || 'active') : currentTab;
+  pendingSplitTarget = { sid: sid, dir: dir, lane: lane };
+  newSession();
 }
-
-function resetLayout() {
-  // Only reset positions of panes in current lane, keep other lanes
-  Object.keys(panes).forEach(function(sid) {
-    var s = state[sid];
-    if (s && (s.lane || 'active') === currentTab) delete savedPositions[sid];
-  });
-  localStorage.setItem('panePositions', JSON.stringify(savedPositions));
-  applyPresetLayout();
-}
-
-// Set initial active button
-setTimeout(function() {
-  document.querySelectorAll('#layout-sel button').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.layout === currentLayout);
-  });
-}, 0);
-
-document.getElementById('layout-sel').addEventListener('click', function(e) {
-  var btn = e.target.closest('button[data-layout]');
-  if (!btn) return;
-  currentLayout = btn.dataset.layout;
-  localStorage.setItem('layout', currentLayout);
-  document.querySelectorAll('#layout-sel button').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
-  applyPresetLayout();
-});
 
 document.getElementById('canvas').addEventListener('click', function(e) {
+  var splitH = e.target.closest('[data-split-h]');
+  if (splitH) { requestSplit(splitH.dataset.splitH, 'h'); return; }
+  var splitV = e.target.closest('[data-split-v]');
+  if (splitV) { requestSplit(splitV.dataset.splitV, 'v'); return; }
   var killBtn = e.target.closest('[data-kill]');
   if (killBtn) { fetch('/api/sessions/' + killBtn.dataset.kill + '/kill', { method:'POST' }); return; }
   var resBtn = e.target.closest('[data-resume]');
@@ -1180,14 +1239,14 @@ function startInlineRename(nmEl, sid) {
 }
 
 window.addEventListener('resize', function() {
-  Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
+  ['active','pending','done'].forEach(function(lane) {
+    fitSubtree(layoutTrees[lane]);
+  });
 });
 
 function toggleOverseer() {
   document.getElementById('overseer-pane').classList.toggle('collapsed');
-  setTimeout(function() {
-    Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
-  }, 100);
+  setTimeout(function() { fitSubtree(layoutTrees[currentTab]); }, 120);
 }
 
 // ── Folder picker ────────────────────────────────────────────────
@@ -1374,10 +1433,7 @@ function setActiveSession(sid) {
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('collapsed');
-  setTimeout(function() {
-    Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
-    applyPresetLayout();
-  }, 220);
+  setTimeout(function() { fitSubtree(layoutTrees[currentTab]); }, 220);
 }
 
 function sbRefresh() {
@@ -1981,8 +2037,7 @@ function esc(s) {
     // Save width to localStorage
     localStorage.setItem('sb-width', sidebar.offsetWidth);
     // Re-fit terminals
-    Object.values(panes).forEach(function(p) { try { p.fit.fit(); } catch(_){} });
-    applyPresetLayout();
+    fitSubtree(layoutTrees[currentTab]);
   }
 
   // Restore saved width
@@ -2070,6 +2125,9 @@ document.addEventListener('keydown', function(e) {
   if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); sbGoBack(); }
   if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); sbGoForward(); }
 });
+
+// Apply saved theme on load
+applyTheme(currentTheme);
 
 connectCtrl();
 </script>
