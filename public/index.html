@@ -874,6 +874,7 @@ function renderTree(node, el) {
     p.el.style.minHeight = '0';
     el.appendChild(p.el);
     p.el.classList.remove('zoomed');
+    p.el.style.maxWidth = '';
   } else {
     var isH = node.dir === 'h';
     var container = document.createElement('div');
@@ -918,7 +919,14 @@ function rebuildCanvas() {
       return (s.name || '').toLowerCase().indexOf(sessionFilter) >= 0 ||
              (s.cwd  || '').toLowerCase().indexOf(sessionFilter) >= 0;
     });
-    if (!matchSids.length) { updateEmpty(); return; }
+    if (!matchSids.length) {
+      var noMatch = document.createElement('div');
+      noMatch.id = 'empty';
+      noMatch.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center';
+      noMatch.innerHTML = '<div><h2 style="color:var(--text);margin-bottom:6px;font-size:18px">No matching sessions</h2><p>No sessions match "' + sessionFilter + '"</p></div>';
+      canvas.appendChild(noMatch);
+      return;
+    }
     matchSids.forEach(function(sid) {
       var mp = panes[sid];
       if (!mp) return;
