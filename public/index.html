@@ -581,6 +581,16 @@ button[data-zoom] { font-style:normal; }
 #note-pop textarea { width:100%; height:90px; resize:vertical; background:var(--bg2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:8px; font-family:inherit; font-size:12px; outline:none; transition:border-color .15s; }
 #note-pop textarea:focus { border-color:var(--blue); }
 #note-pop .note-actions { display:flex; justify-content:flex-end; gap:6px; margin-top:8px; }
+#preset-panel { position:absolute; right:18px; top:100%; margin-top:4px; z-index:400; background:var(--panel-solid); border:1px solid var(--border-strong); border-radius:10px; padding:12px; min-width:220px; box-shadow:var(--shadow-lg); display:none; }
+#preset-panel .preset-title { font-size:10.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+#preset-panel .preset-item { display:flex; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid var(--border); }
+#preset-panel .preset-item:last-of-type { border-bottom:none; }
+#preset-panel .preset-item .preset-name { flex:1; cursor:pointer; font-size:12.5px; color:var(--text); }
+#preset-panel .preset-item .preset-name:hover { color:var(--blue); }
+#preset-panel .preset-item .preset-del { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:2px 5px; border-radius:4px; }
+#preset-panel .preset-item .preset-del:hover { color:var(--red); background:rgba(248,81,73,.12); }
+#preset-panel .preset-empty { font-size:11.5px; color:var(--muted); padding:4px 0 8px; }
+#bar { position:relative; }
 </style>
 </head>
 <body>
@@ -616,6 +626,14 @@ button[data-zoom] { font-style:normal; }
     <input id="inp-filter" type="text" placeholder="Filter sessions..." autocomplete="off">
   </div>
   <button class="btn btn-ghost" id="btn-broadcast" onclick="toggleBroadcast()" title="Send command to all running sessions">&#x21F6; Broadcast</button>
+  <div style="position:relative">
+    <button class="btn btn-ghost" id="btn-presets" onclick="togglePresetPanel()" title="Layout presets">&#x1F4CB; Layouts</button>
+    <div id="preset-panel">
+      <div class="preset-title">Saved Layouts</div>
+      <div id="preset-list"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px;font-size:12px" onclick="savePreset()">+ Save current layout</button>
+    </div>
+  </div>
   <div style="flex:1"></div>
   <button class="btn btn-purple" onclick="toggleOverseer()">&#x1F9E0; Overseer</button>
 </div>
@@ -700,6 +718,7 @@ button[data-zoom] { font-style:normal; }
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
 var sessionFilter = '';
+var layoutPresets = JSON.parse(localStorage.getItem('claude-hub-layout-presets') || '{}');
 var sessionNotes = JSON.parse(localStorage.getItem('claude-hub-notes') || '{}');
 var paneColors = JSON.parse(localStorage.getItem('claude-hub-colors') || '{}');
 var COLOR_PALETTE = ['', '#f85149', '#e3b341', '#3fb950', '#58a6ff', '#a371f7', '#f0883e', '#ec6547'];
@@ -1566,6 +1585,75 @@ function exportTerminal(sid) {
   document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   toast('Exported ' + lines.length + ' lines → ' + filename);
+}
+
+function togglePresetPanel() {
+  var panel = document.getElementById('preset-panel');
+  var visible = panel.style.display !== 'none';
+  panel.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    renderPresetList();
+    setTimeout(function() {
+      function dismiss(ev) {
+        var btn = document.getElementById('btn-presets');
+        if (!panel.contains(ev.target) && ev.target !== btn) {
+          panel.style.display = 'none';
+          document.removeEventListener('mousedown', dismiss);
+        }
+      }
+      document.addEventListener('mousedown', dismiss);
+    }, 0);
+  }
+}
+
+function renderPresetList() {
+  var list = document.getElementById('preset-list');
+  if (!list) return;
+  var keys = Object.keys(layoutPresets);
+  if (!keys.length) { list.innerHTML = '<div class="preset-empty">No saved layouts yet</div>'; return; }
+  list.innerHTML = keys.map(function(name) {
+    var safe = JSON.stringify(name);
+    return '<div class="preset-item">' +
+      '<span class="preset-name" onclick="loadPreset(' + safe + ')">' + esc(name) + '</span>' +
+      '<button class="preset-del" onclick="deletePreset(' + safe + ')" title="Delete">&#x2715;</button>' +
+    '</div>';
+  }).join('');
+}
+
+function savePreset() {
+  var name = prompt('Name for this layout:', 'Layout ' + (Object.keys(layoutPresets).length + 1));
+  if (!name || !name.trim()) return;
+  name = name.trim();
+  layoutPresets[name] = {
+    active:  layoutTrees.active  ? JSON.parse(JSON.stringify(layoutTrees.active))  : null,
+    pending: layoutTrees.pending ? JSON.parse(JSON.stringify(layoutTrees.pending)) : null,
+    done:    layoutTrees.done    ? JSON.parse(JSON.stringify(layoutTrees.done))    : null,
+  };
+  localStorage.setItem('claude-hub-layout-presets', JSON.stringify(layoutPresets));
+  renderPresetList();
+  toast('Saved layout "' + name + '"');
+}
+
+function loadPreset(name) {
+  var preset = layoutPresets[name];
+  if (!preset) return;
+  ['active', 'pending', 'done'].forEach(function(lane) {
+    if (!preset[lane]) return;
+    var validIds = Object.values(state)
+      .filter(function(s) { return (s.lane || 'active') === lane; })
+      .map(function(s) { return s.id; });
+    saveLayoutTree(lane, reconcileTree(preset[lane], validIds));
+  });
+  rebuildCanvas();
+  document.getElementById('preset-panel').style.display = 'none';
+  toast('Applied layout "' + name + '"');
+}
+
+function deletePreset(name) {
+  delete layoutPresets[name];
+  localStorage.setItem('claude-hub-layout-presets', JSON.stringify(layoutPresets));
+  renderPresetList();
+  toast('Deleted layout "' + name + '"');
 }
 
 function toggleOverseer() {
