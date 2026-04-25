@@ -724,7 +724,7 @@ button[data-zoom] { font-style:normal; }
 <div id="toast"></div>
 
 <script>
-var searchCaseSensitive = false;
+var searchCaseSensitive = {};
 var activeSearchSid = null;
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
@@ -1374,6 +1374,16 @@ function requestSplit(sid, dir) {
 }
 
 document.getElementById('canvas').addEventListener('click', function(e) {
+  var caseBtn = e.target.closest('[id^="search-case-"]');
+  if (caseBtn) {
+    e.stopPropagation();
+    var sid = caseBtn.id.replace('search-case-', '');
+    if (!searchCaseSensitive[sid]) searchCaseSensitive[sid] = false;
+    searchCaseSensitive[sid] = !searchCaseSensitive[sid];
+    caseBtn.classList.toggle('active', searchCaseSensitive[sid]);
+    runSearch(sid);
+    return;
+  }
   var exportBtn = e.target.closest('[data-export]');
   if (exportBtn) { exportTerminal(exportBtn.dataset.export); return; }
   var noteBtn = e.target.closest('[data-note]');
@@ -1728,8 +1738,10 @@ function closeSearchBar(sid) {
   var countEl = document.getElementById('search-count-' + sid);
   if (countEl) countEl.textContent = '';
   if (activeSearchSid === sid) activeSearchSid = null;
-  if (p) { try { p.term.focus(); } catch(_){} }
-  try { p.fit.fit(); } catch(_){}
+  if (p) {
+    try { p.term.focus(); } catch(_){}
+    try { p.fit.fit(); } catch(_){}
+  }
 }
 
 function runSearch(sid) {
@@ -1740,7 +1752,7 @@ function runSearch(sid) {
   var query = inp.value;
   if (!query) { try { p.search.clearDecorations(); } catch(_){} return; }
   try {
-    p.search.findNext(query, { caseSensitive: searchCaseSensitive, incremental: true });
+    p.search.findNext(query, { caseSensitive: !!searchCaseSensitive[sid], incremental: true });
   } catch(_){}
 }
 
@@ -1749,7 +1761,7 @@ function searchNext(sid) {
   if (!p || !p.search) return;
   var inp = document.getElementById('search-inp-' + sid);
   if (!inp || !inp.value) return;
-  try { p.search.findNext(inp.value, { caseSensitive: searchCaseSensitive }); } catch(_){}
+  try { p.search.findNext(inp.value, { caseSensitive: !!searchCaseSensitive[sid] }); } catch(_){}
 }
 
 function searchPrev(sid) {
@@ -1757,7 +1769,7 @@ function searchPrev(sid) {
   if (!p || !p.search) return;
   var inp = document.getElementById('search-inp-' + sid);
   if (!inp || !inp.value) return;
-  try { p.search.findPrevious(inp.value, { caseSensitive: searchCaseSensitive }); } catch(_){}
+  try { p.search.findPrevious(inp.value, { caseSensitive: !!searchCaseSensitive[sid] }); } catch(_){}
 }
 
 function toggleOverseer() {
@@ -2715,9 +2727,10 @@ document.getElementById('canvas').addEventListener('keydown', function(e) {
   else if (e.key === 'Escape') { e.preventDefault(); closeSearchBar(sid); }
   else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
     e.preventDefault();
-    searchCaseSensitive = !searchCaseSensitive;
+    if (!searchCaseSensitive[sid]) searchCaseSensitive[sid] = false;
+    searchCaseSensitive[sid] = !searchCaseSensitive[sid];
     var btn = document.getElementById('search-case-' + sid);
-    if (btn) btn.classList.toggle('active', searchCaseSensitive);
+    if (btn) btn.classList.toggle('active', searchCaseSensitive[sid]);
     runSearch(sid);
   }
 });
