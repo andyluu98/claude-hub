@@ -620,6 +620,15 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
 #tag-pop .tag-inp-wrap input { flex:1; background:var(--bg2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 8px; font-size:12px; font-family:inherit; outline:none; }
 #tag-pop .tag-inp-wrap input:focus { border-color:var(--blue); }
 #tag-pop .tag-inp-wrap button { background:var(--blue); color:#fff; border:none; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer; }
+#template-panel { position:absolute; left:0; top:100%; margin-top:4px; z-index:400; background:var(--panel-solid); border:1px solid var(--border-strong); border-radius:10px; padding:10px; min-width:220px; box-shadow:var(--shadow-lg); display:none; }
+#template-panel .tmpl-item { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:7px; cursor:pointer; transition:background .1s; }
+#template-panel .tmpl-item:hover { background:rgba(88,166,255,.08); }
+#template-panel .tmpl-item .tmpl-label { flex:1; font-size:12.5px; color:var(--text); }
+#template-panel .tmpl-item .tmpl-del { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:2px 5px; border-radius:4px; }
+#template-panel .tmpl-item .tmpl-del:hover { color:var(--red); background:rgba(248,81,73,.12); }
+#template-panel .tmpl-sep { height:1px; background:var(--border); margin:6px 0; }
+#template-panel .tmpl-action { padding:6px 8px; font-size:12px; color:var(--text-dim); cursor:pointer; border-radius:7px; display:flex; align-items:center; gap:6px; }
+#template-panel .tmpl-action:hover { background:rgba(88,166,255,.08); color:var(--text); }
 </style>
 </head>
 <body>
@@ -643,7 +652,15 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
   <input id="inp-name" type="text" placeholder="Task name (optional)...">
   <button id="btn-cwd">&#x1F4C1; (home)</button>
   <label class="chk"><input type="checkbox" id="chk-auto" checked> &#x26A1; Auto-accept</label>
-  <button class="btn btn-primary" onclick="newSession()">+ New Session</button>
+  <div style="position:relative;display:inline-flex">
+    <button class="btn btn-primary" onclick="newSession()" style="border-radius:7px 0 0 7px;border-right:1px solid rgba(255,255,255,.2)">+ New Session</button>
+    <button class="btn btn-primary" id="btn-tmpl-arrow" onclick="toggleTemplatePanel()" title="Session templates" style="border-radius:0 7px 7px 0;padding:5px 9px;font-size:11px">&#x25BE;</button>
+    <div id="template-panel">
+      <div id="template-list"></div>
+      <div class="tmpl-sep"></div>
+      <div class="tmpl-action" onclick="saveTemplate()">&#xFF0B; Save current as template</div>
+    </div>
+  </div>
   <button class="btn btn-primary" onclick="resumeAll()" title="Restart all stopped sessions">&#x25B6; Resume All</button>
   <button class="btn btn-ghost" onclick="killAll()">Stop All</button>
   <div style="display:flex;align-items:center;gap:3px;margin-left:4px">
@@ -748,6 +765,8 @@ var searchCaseSensitive = {};
 var activeSearchSid = null;
 var dragState = { active: false, fromSid: null };
 var sessionTags = JSON.parse(localStorage.getItem('claude-hub-tags') || '{}');
+var sessionTemplates = JSON.parse(localStorage.getItem('claude-hub-templates') || '[]');
+var templateDismiss = null;
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
 var sessionFilter = '';
@@ -1933,6 +1952,99 @@ function showTagEditor(sid, anchorEl) {
     };
     document.addEventListener('mousedown', dismiss);
   }, 0);
+}
+
+function toggleTemplatePanel() {
+  var panel = document.getElementById('template-panel');
+  var visible = panel.style.display !== 'none';
+  if (visible) {
+    panel.style.display = 'none';
+    if (templateDismiss) { document.removeEventListener('mousedown', templateDismiss); templateDismiss = null; }
+  } else {
+    panel.style.display = 'block';
+    renderTemplateList();
+    setTimeout(function() {
+      templateDismiss = function(ev) {
+        var btn = document.getElementById('btn-tmpl-arrow');
+        if (!panel.contains(ev.target) && ev.target !== btn) {
+          panel.style.display = 'none';
+          document.removeEventListener('mousedown', templateDismiss);
+          templateDismiss = null;
+        }
+      };
+      document.addEventListener('mousedown', templateDismiss);
+    }, 0);
+  }
+}
+
+function renderTemplateList() {
+  var list = document.getElementById('template-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!sessionTemplates.length) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'font-size:11.5px;color:var(--muted);padding:4px 8px 6px';
+    empty.textContent = 'No templates saved yet';
+    list.appendChild(empty);
+    return;
+  }
+  sessionTemplates.forEach(function(tmpl) {
+    var row = document.createElement('div');
+    row.className = 'tmpl-item';
+    var label = document.createElement('span');
+    label.className = 'tmpl-label';
+    label.textContent = tmpl.label;
+    label.title = tmpl.name + ' • ' + tmpl.cwd;
+    label.addEventListener('click', function() { applyTemplate(tmpl.id); });
+    var del = document.createElement('button');
+    del.className = 'tmpl-del';
+    del.innerHTML = '&#x2715;';
+    del.title = 'Delete template';
+    del.addEventListener('click', function(e) { e.stopPropagation(); deleteTemplate(tmpl.id); });
+    row.appendChild(label); row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+function saveTemplate() {
+  var label = prompt('Template name:', document.getElementById('inp-name').value || 'My Template');
+  if (!label || !label.trim()) return;
+  var tmpl = {
+    id: Date.now().toString(),
+    label: label.trim(),
+    name: document.getElementById('inp-name').value,
+    cwd: selectedCwd,
+    autoAccept: document.getElementById('chk-auto').checked
+  };
+  sessionTemplates.push(tmpl);
+  localStorage.setItem('claude-hub-templates', JSON.stringify(sessionTemplates));
+  renderTemplateList();
+  toast('Saved template "' + tmpl.label + '"');
+}
+
+function applyTemplate(id) {
+  var tmpl = null;
+  for (var i = 0; i < sessionTemplates.length; i++) {
+    if (sessionTemplates[i].id === id) { tmpl = sessionTemplates[i]; break; }
+  }
+  if (!tmpl) return;
+  document.getElementById('inp-name').value = tmpl.name || '';
+  if (tmpl.cwd) {
+    selectedCwd = tmpl.cwd;
+    var short = tmpl.cwd.split(/[\/\\]/).filter(Boolean).slice(-2).join('/') || tmpl.cwd;
+    document.getElementById('btn-cwd').textContent = '📁 ' + short;
+  }
+  document.getElementById('chk-auto').checked = !!tmpl.autoAccept;
+  document.getElementById('template-panel').style.display = 'none';
+  if (templateDismiss) { document.removeEventListener('mousedown', templateDismiss); templateDismiss = null; }
+  newSession();
+}
+
+function deleteTemplate(id) {
+  sessionTemplates = sessionTemplates.filter(function(t) { return t.id !== id; });
+  localStorage.setItem('claude-hub-templates', JSON.stringify(sessionTemplates));
+  renderTemplateList();
+  toast('Template deleted');
 }
 
 function toggleOverseer() {
