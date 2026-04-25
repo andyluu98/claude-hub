@@ -135,6 +135,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
   font-family:inherit;
 }
 #bar input:focus { border-color:var(--blue); background:rgba(13,17,23,.9); box-shadow:0 0 0 3px rgba(88,166,255,.1); }
+[data-theme="light"] #bar input:focus { background:#fff; border-color:var(--blue); }
 #bar input::placeholder { color:var(--muted); }
 #inp-name { width:140px; }
 #btn-cwd {
@@ -895,7 +896,7 @@ function connectCtrl() {
   };
   ctrlWs.onclose = function() {
     var b = document.getElementById('ws-badge');
-    b.textContent = 'Mat ket noi...';
+    b.textContent = 'Disconnected...';
     b.className = '';
     setTimeout(connectCtrl, Math.min(5000, 1000 * ++retryCount));
   };
@@ -1179,7 +1180,9 @@ switchTab(currentTab);
 
 function updateEmpty() {
   var existing = document.getElementById('empty');
-  if (!Object.keys(state).length) {
+  var tree = layoutTrees[currentTab];
+  var laneEmpty = !tree || getAllLeafSids(tree, []).length === 0;
+  if (laneEmpty) {
     if (!existing) {
       var d = document.createElement('div');
       d.id = 'empty';
@@ -1358,7 +1361,7 @@ function renderFsBody(data) {
 
     // Folders in current dir
     if (data.items && data.items.length) {
-      html += '<div class="modal-section-title">&#x1F4C2; Folders in' + esc(data.cwd.split(/[\\/]/).pop() || data.cwd) + '</div>';
+      html += '<div class="modal-section-title">&#x1F4C2; Folders in ' + esc(data.cwd.split(/[\\/]/).pop() || data.cwd) + '</div>';
       data.items.forEach(function(it) {
         var tag = it.isProject ? '<span class="proj-tag">PROJECT</span>' : '';
         html += '<div class="fs-item" data-path="' + esc(it.path) + '">&#x1F4C1; ' + esc(it.name) + tag + '</div>';
@@ -1582,8 +1585,8 @@ function renderSbList(items) {
   var html = '';
   var upPath = sbCurrentPath.replace(/[\/][^\/]+[\/]?$/, '') || sbCurrentPath;
   if (upPath && upPath !== sbCurrentPath) {
-    html += '<div class="sb-row" data-sb-up="' + esc(upPath) + '"><span class="sb-icon">&#x2B06;</span><span class="sb-name">.. (len mot cap)</span></div>';
-  } else if (sbCurrentPath && /^[A-Za-z]:\?$/.test(sbCurrentPath)) {
+    html += '<div class="sb-row" data-sb-up="' + esc(upPath) + '"><span class="sb-icon">&#x2B06;</span><span class="sb-name">.. (up one level)</span></div>';
+  } else if (sbCurrentPath && /^[A-Za-z]:[\\\/]?$/.test(sbCurrentPath)) {
     // At drive root → show button back to Drives list
     html += '<div class="sb-row" data-sb-dir="Drives"><span class="sb-icon">&#x1F4BF;</span><span class="sb-name">.. (all drives)</span></div>';
   }
@@ -1878,7 +1881,7 @@ function handleCtxAction(act) {
   }
   if (act === 'new-file' || act === 'new-folder') {
     var parent = t.isCurrent ? sbCurrentPath : (t.type === 'dir' ? t.path : sbCurrentPath);
-    var name = prompt(act === 'new-file' ? 'Ten file moi:' : 'Ten folder moi:', act === 'new-file' ? 'untitled.txt' : 'new-folder');
+    var name = prompt(act === 'new-file' ? 'New file name:' : 'New folder name:', act === 'new-file' ? 'untitled.txt' : 'new-folder');
     if (!name) return;
     fetch('/api/file-new', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -1949,7 +1952,7 @@ function showFolderPopup(sid, anchorBtn) {
   var fullPath = s.cwd || '';
   var BS = String.fromCharCode(92);
   // Breadcrumb: split path by \ or /, skip empty
-  var parts = fullPath.split(/[\/]/).filter(Boolean);
+  var parts = fullPath.split(/[\/\\]/).filter(Boolean);
   var crumbHtml = '';
   var accum = '';
   parts.forEach(function(part, i) {
@@ -1959,7 +1962,7 @@ function showFolderPopup(sid, anchorBtn) {
       accum = accum + (accum.endsWith(BS) ? '' : BS) + part;
     }
     if (i > 0) crumbHtml += '<span class="sep">›</span>';
-    crumbHtml += '<span data-crumb="' + esc(accum) + '" title="Mo trong Explorer">' + esc(part) + '</span>';
+    crumbHtml += '<span data-crumb="' + esc(accum) + '" title="Open in Explorer">' + esc(part) + '</span>';
   });
   pop.innerHTML =
     '<div class="fp-path">' + esc(fullPath) + '</div>' +
