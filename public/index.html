@@ -1328,6 +1328,8 @@ function removePane(sid) {
   var p = panes[sid];
   if (p) {
     try { p.ws.close(); } catch(_){}
+    closeSearchBar(sid);
+    delete searchCaseSensitive[sid];
     try { p.term.dispose(); } catch(_){}
     if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
     delete panes[sid];
@@ -1426,7 +1428,7 @@ document.getElementById('canvas').addEventListener('mousedown', function(e) {
   if (zoomedSid || sessionFilter) return;           // disabled in zoom / filter mode
   var head = e.target.closest('.pane-head');
   if (!head) return;
-  if (e.target.closest('button') || e.target.closest('.lane-btns') || e.target.closest('[data-color-dot]') || e.target.closest('.nm')) return;
+  if (e.target.closest('button') || e.target.closest('.lane-btns') || e.target.closest('[data-color-dot]') || e.target.closest('.nm') || e.target.closest('.tag-area')) return;
   var paneEl = head.closest('.pane');
   if (!paneEl) return;
   e.preventDefault();
