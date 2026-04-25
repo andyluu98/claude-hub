@@ -2197,6 +2197,42 @@ document.addEventListener('keydown', function(e) {
 applyTheme(currentTheme);
 
 document.getElementById('btn-font-size').textContent = termFontSize + 'px';
+document.addEventListener('keydown', function(kbEv) {
+  var tag = document.activeElement ? document.activeElement.tagName : '';
+  // Let plain text inputs handle their own keys (but not xterm textareas — those get ours)
+  if (tag === 'INPUT' && !document.activeElement.closest('.xterm')) return;
+
+  if (kbEv.ctrlKey && kbEv.shiftKey && kbEv.key === 'N') {
+    kbEv.preventDefault();
+    newSession();
+    return;
+  }
+  if (kbEv.ctrlKey && kbEv.shiftKey && kbEv.key === 'W') {
+    kbEv.preventDefault();
+    var active = document.querySelector('.pane.active');
+    if (active) {
+      var sid = active.id.replace('pane-', '');
+      var sName = state[sid] ? state[sid].name : sid;
+      if (confirm('Close session "' + sName + '"?')) {
+        fetch('/api/sessions/' + sid, { method: 'DELETE' });
+      }
+    }
+    return;
+  }
+  if (kbEv.ctrlKey && kbEv.shiftKey && kbEv.key === ']') {
+    kbEv.preventDefault();
+    var lanes = ['active', 'pending', 'done'];
+    switchTab(lanes[(lanes.indexOf(currentTab) + 1) % 3]);
+    return;
+  }
+  if (kbEv.ctrlKey && kbEv.shiftKey && kbEv.key === '[') {
+    kbEv.preventDefault();
+    var lanes = ['active', 'pending', 'done'];
+    switchTab(lanes[(lanes.indexOf(currentTab) + 2) % 3]);
+    return;
+  }
+});
+
 connectCtrl();
 </script>
 </body>
