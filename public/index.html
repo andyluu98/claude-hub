@@ -619,7 +619,7 @@ button[data-zoom] { font-style:normal; }
 <div id="broadcast-bar" style="display:none;align-items:center;gap:8px;padding:6px 18px;background:linear-gradient(90deg,rgba(227,179,65,.08),rgba(227,179,65,.04));border-bottom:1px solid rgba(227,179,65,.25);flex-shrink:0">
   <span style="font-size:12px;color:var(--orange);font-weight:600;white-space:nowrap">&#x21F6; Broadcast:</span>
   <input id="inp-broadcast" type="text" placeholder="Command to send to all running sessions... (Enter to send, Esc to cancel)" style="flex:1;background:rgba(13,17,23,.5);border:1px solid rgba(227,179,65,.3);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12.5px;outline:none;font-family:inherit">
-  <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="document.getElementById('broadcast-bar').style.display='none'">&#x2715;</button>
+  <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="toggleBroadcast()">&#x2715;</button>
 </div>
 <div id="main">
   <div id="overseer-pane">
@@ -1269,6 +1269,8 @@ function updateTabCounts() {
 // Tab switcher
 var currentTab = localStorage.getItem('currentTab') || 'active';
 function switchTab(tab) {
+  var _bb = document.getElementById('broadcast-bar');
+  if (_bb && _bb.style.display !== 'none') { _bb.style.display = 'none'; document.getElementById('inp-broadcast').value = ''; }
   currentTab = tab;
   localStorage.setItem('currentTab', tab);
   document.querySelectorAll('#tab-bar button').forEach(function(b) {
@@ -1443,9 +1445,15 @@ function showColorPicker(sid, anchorEl) {
 
 function toggleBroadcast() {
   var bar = document.getElementById('broadcast-bar');
+  var inp = document.getElementById('inp-broadcast');
   var visible = bar.style.display !== 'none';
-  bar.style.display = visible ? 'none' : 'flex';
-  if (!visible) setTimeout(function() { document.getElementById('inp-broadcast').focus(); }, 50);
+  if (visible) {
+    bar.style.display = 'none';
+    inp.value = '';
+  } else {
+    bar.style.display = 'flex';
+    setTimeout(function() { inp.focus(); }, 50);
+  }
 }
 
 function sendBroadcast(cmd) {
@@ -1454,12 +1462,16 @@ function sendBroadcast(cmd) {
   Object.keys(panes).forEach(function(sid) {
     var p = panes[sid];
     var s = state[sid];
-    if (s && s.status === 'running' && p.ws && p.ws.readyState === 1) {
+    if (p && s && s.status === 'running' && p.ws && p.ws.readyState === 1) {
       p.ws.send(cmd + '\r');
       count++;
     }
   });
-  toast('Sent to ' + count + ' running session' + (count !== 1 ? 's' : ''));
+  if (count === 0) {
+    toast('No running sessions to broadcast to');
+  } else {
+    toast('Sent to ' + count + ' running session' + (count !== 1 ? 's' : ''));
+  }
 }
 
 function toggleOverseer() {
