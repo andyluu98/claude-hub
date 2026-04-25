@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="/xterm-css/xterm.css">
 <script src="/xterm/xterm.js"></script>
 <script src="/xterm-fit/xterm-addon-fit.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-search@0.1.0/lib/addon-search.min.js"></script>
 <style>
 :root {
   --bg:#07090d; --bg2:#0d1117; --panel:rgba(22,27,34,.85); --panel-solid:#161b22;
@@ -591,6 +592,14 @@ button[data-zoom] { font-style:normal; }
 #preset-panel .preset-item .preset-del { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:2px 5px; border-radius:4px; }
 #preset-panel .preset-item .preset-del:hover { color:var(--red); background:rgba(248,81,73,.12); }
 #preset-panel .preset-empty { font-size:11.5px; color:var(--muted); padding:4px 0 8px; }
+.search-bar { display:none; align-items:center; gap:6px; padding:4px 10px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0; }
+.search-bar.open { display:flex; }
+.search-bar input { flex:1; min-width:0; background:var(--panel-solid); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:4px 8px; font-size:12px; font-family:inherit; outline:none; transition:border-color .15s; }
+.search-bar input:focus { border-color:var(--blue); }
+.search-bar .sb-count { font-size:11px; color:var(--muted); white-space:nowrap; min-width:36px; }
+.search-bar button { background:transparent; border:1px solid var(--border); color:var(--text-dim); border-radius:5px; cursor:pointer; padding:2px 7px; font-size:12px; transition:background .1s; }
+.search-bar button:hover { background:var(--panel); }
+.search-bar button.active { background:rgba(88,166,255,.15); border-color:var(--blue); color:var(--blue); }
 </style>
 </head>
 <body>
@@ -715,6 +724,8 @@ button[data-zoom] { font-style:normal; }
 <div id="toast"></div>
 
 <script>
+var searchCaseSensitive = false;
+var activeSearchSid = null;
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
 var sessionFilter = '';
@@ -1156,6 +1167,14 @@ function createPaneElement(s) {
       '<button title="Stop (keep session)" data-kill="' + s.id + '">&#x25A0;</button>' +
       '<button title="Delete permanently" data-remove="' + s.id + '">&times;</button>' +
     '</div>' +
+    '<div class="search-bar" id="search-bar-' + s.id + '">' +
+      '<input type="text" id="search-inp-' + s.id + '" placeholder="Search..." autocomplete="off" spellcheck="false">' +
+      '<span class="sb-count" id="search-count-' + s.id + '"></span>' +
+      '<button id="search-case-' + s.id + '" title="Case sensitive (Alt+C)">Aa</button>' +
+      '<button onclick="searchPrev(\'' + s.id + '\')" title="Previous (Shift+Enter)">▲</button>' +
+      '<button onclick="searchNext(\'' + s.id + '\')" title="Next (Enter)">▼</button>' +
+      '<button onclick="closeSearchBar(\'' + s.id + '\')" title="Close (Esc)">✕</button>' +
+    '</div>' +
     '<div class="pane-body"><div class="xterm-wrap" id="term-' + s.id + '"></div></div>';
 
   var termTheme = currentTheme === 'light' ? TERM_THEME_LIGHT : TERM_THEME_DARK;
@@ -1167,6 +1186,8 @@ function createPaneElement(s) {
   });
   var fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
+  var search = new SearchAddon.SearchAddon();
+  term.loadAddon(search);
   // term.open() is deferred until the pane element is in the real DOM (see openAndFitSubtree)
 
   var ws = new WebSocket('ws://' + location.host + '/term/' + s.id);
@@ -1190,6 +1211,11 @@ function createPaneElement(s) {
 
   term.attachCustomKeyEventHandler(function(ev) {
     if (ev.type !== 'keydown') return true;
+    if (ev.ctrlKey && !ev.shiftKey && (ev.key === 'f' || ev.key === 'F')) {
+      ev.preventDefault();
+      openSearchBar(s.id);
+      return false;
+    }
     if (ev.ctrlKey && (ev.key === 'c' || ev.key === 'C') && !ev.shiftKey) {
       var sel = term.getSelection();
       if (sel && sel.length > 0) {
@@ -1231,7 +1257,7 @@ function createPaneElement(s) {
     toast('Sent ' + files.length + ' file(s) to terminal');
   });
 
-  panes[s.id] = { term: term, ws: ws, fit: fit, el: el, opened: false };
+  panes[s.id] = { term: term, ws: ws, fit: fit, search: search, el: el, opened: false };
   applyPaneColor(s.id);
 }
 
@@ -1676,6 +1702,62 @@ function deletePreset(name) {
   localStorage.setItem('claude-hub-layout-presets', JSON.stringify(layoutPresets));
   renderPresetList();
   toast('Deleted layout "' + name + '"');
+}
+
+function openSearchBar(sid) {
+  if (activeSearchSid && activeSearchSid !== sid) closeSearchBar(activeSearchSid);
+  activeSearchSid = sid;
+  var bar = document.getElementById('search-bar-' + sid);
+  if (!bar) return;
+  bar.classList.add('open');
+  var inp = document.getElementById('search-inp-' + sid);
+  if (inp) { inp.focus(); inp.select(); }
+  var p = panes[sid];
+  if (p) {
+    try { p.fit.fit(); } catch(_){}
+  }
+}
+
+function closeSearchBar(sid) {
+  var bar = document.getElementById('search-bar-' + sid);
+  if (bar) bar.classList.remove('open');
+  var p = panes[sid];
+  if (p && p.search) {
+    try { p.search.clearDecorations(); } catch(_){}
+  }
+  var countEl = document.getElementById('search-count-' + sid);
+  if (countEl) countEl.textContent = '';
+  if (activeSearchSid === sid) activeSearchSid = null;
+  if (p) { try { p.term.focus(); } catch(_){} }
+  try { p.fit.fit(); } catch(_){}
+}
+
+function runSearch(sid) {
+  var p = panes[sid];
+  if (!p || !p.search) return;
+  var inp = document.getElementById('search-inp-' + sid);
+  if (!inp) return;
+  var query = inp.value;
+  if (!query) { try { p.search.clearDecorations(); } catch(_){} return; }
+  try {
+    p.search.findNext(query, { caseSensitive: searchCaseSensitive, incremental: true });
+  } catch(_){}
+}
+
+function searchNext(sid) {
+  var p = panes[sid];
+  if (!p || !p.search) return;
+  var inp = document.getElementById('search-inp-' + sid);
+  if (!inp || !inp.value) return;
+  try { p.search.findNext(inp.value, { caseSensitive: searchCaseSensitive }); } catch(_){}
+}
+
+function searchPrev(sid) {
+  var p = panes[sid];
+  if (!p || !p.search) return;
+  var inp = document.getElementById('search-inp-' + sid);
+  if (!inp || !inp.value) return;
+  try { p.search.findPrevious(inp.value, { caseSensitive: searchCaseSensitive }); } catch(_){}
 }
 
 function toggleOverseer() {
@@ -2623,6 +2705,27 @@ document.getElementById('inp-broadcast').addEventListener('keydown', function(e)
     this.value = '';
     document.getElementById('broadcast-bar').style.display = 'none';
   }
+});
+document.getElementById('canvas').addEventListener('keydown', function(e) {
+  var inp = e.target;
+  if (!inp || inp.id.indexOf('search-inp-') !== 0) return;
+  var sid = inp.id.replace('search-inp-', '');
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); searchNext(sid); }
+  else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); searchPrev(sid); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeSearchBar(sid); }
+  else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+    e.preventDefault();
+    searchCaseSensitive = !searchCaseSensitive;
+    var btn = document.getElementById('search-case-' + sid);
+    if (btn) btn.classList.toggle('active', searchCaseSensitive);
+    runSearch(sid);
+  }
+});
+document.getElementById('canvas').addEventListener('input', function(e) {
+  var inp = e.target;
+  if (!inp || inp.id.indexOf('search-inp-') !== 0) return;
+  var sid = inp.id.replace('search-inp-', '');
+  runSearch(sid);
 });
 connectCtrl();
 </script>
