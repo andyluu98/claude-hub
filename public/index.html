@@ -611,10 +611,16 @@ button[data-zoom] { font-style:normal; }
   <div class="filter-wrap">
     <input id="inp-filter" type="text" placeholder="Filter sessions..." autocomplete="off">
   </div>
+  <button class="btn btn-ghost" id="btn-broadcast" onclick="toggleBroadcast()" title="Send command to all running sessions">&#x21F6; Broadcast</button>
   <div style="flex:1"></div>
   <button class="btn btn-purple" onclick="toggleOverseer()">&#x1F9E0; Overseer</button>
 </div>
 
+<div id="broadcast-bar" style="display:none;align-items:center;gap:8px;padding:6px 18px;background:linear-gradient(90deg,rgba(227,179,65,.08),rgba(227,179,65,.04));border-bottom:1px solid rgba(227,179,65,.25);flex-shrink:0">
+  <span style="font-size:12px;color:var(--orange);font-weight:600;white-space:nowrap">&#x21F6; Broadcast:</span>
+  <input id="inp-broadcast" type="text" placeholder="Command to send to all running sessions... (Enter to send, Esc to cancel)" style="flex:1;background:rgba(13,17,23,.5);border:1px solid rgba(227,179,65,.3);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12.5px;outline:none;font-family:inherit">
+  <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="document.getElementById('broadcast-bar').style.display='none'">&#x2715;</button>
+</div>
 <div id="main">
   <div id="overseer-pane">
     <h3>&#x1F9E0; Overseer <span class="count" id="overseer-time"></span></h3>
@@ -1433,6 +1439,27 @@ function showColorPicker(sid, anchorEl) {
     if (!pop.contains(ev.target)) { pop.remove(); document.removeEventListener('mousedown', dismiss); }
   };
   setTimeout(function() { document.addEventListener('mousedown', dismiss); }, 0);
+}
+
+function toggleBroadcast() {
+  var bar = document.getElementById('broadcast-bar');
+  var visible = bar.style.display !== 'none';
+  bar.style.display = visible ? 'none' : 'flex';
+  if (!visible) setTimeout(function() { document.getElementById('inp-broadcast').focus(); }, 50);
+}
+
+function sendBroadcast(cmd) {
+  if (!cmd) return;
+  var count = 0;
+  Object.keys(panes).forEach(function(sid) {
+    var p = panes[sid];
+    var s = state[sid];
+    if (s && s.status === 'running' && p.ws && p.ws.readyState === 1) {
+      p.ws.send(cmd + '\r');
+      count++;
+    }
+  });
+  toast('Sent to ' + count + ' running session' + (count !== 1 ? 's' : ''));
 }
 
 function toggleOverseer() {
@@ -2371,6 +2398,16 @@ document.getElementById('inp-filter').addEventListener('input', function() {
 });
 document.getElementById('inp-filter').addEventListener('keydown', function(e) {
   if (e.key === 'Escape') { this.value = ''; sessionFilter = ''; rebuildCanvas(); this.blur(); }
+});
+document.getElementById('inp-broadcast').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    sendBroadcast(this.value.trim());
+    this.value = '';
+    document.getElementById('broadcast-bar').style.display = 'none';
+  } else if (e.key === 'Escape') {
+    this.value = '';
+    document.getElementById('broadcast-bar').style.display = 'none';
+  }
 });
 connectCtrl();
 </script>
