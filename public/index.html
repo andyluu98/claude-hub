@@ -602,7 +602,9 @@ button[data-zoom] { font-style:normal; }
 .search-bar button.active { background:rgba(88,166,255,.15); border-color:var(--blue); color:var(--blue); }
 .pane-head { cursor: grab; user-select: none; }
 .pane-head:active { cursor: grabbing; }
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
 .pane.drag-source { opacity: 0.45; }
+.pane.drag-source .pane-body { pointer-events: none; }
 .pane.drag-target { outline: 2px solid var(--blue); outline-offset: -2px; }
 </style>
 </head>
@@ -1387,7 +1389,7 @@ document.getElementById('canvas').addEventListener('mousedown', function(e) {
   if (zoomedSid || sessionFilter) return;           // disabled in zoom / filter mode
   var head = e.target.closest('.pane-head');
   if (!head) return;
-  if (e.target.closest('button') || e.target.closest('.lane-btns') || e.target.closest('[data-color-dot]')) return;
+  if (e.target.closest('button') || e.target.closest('.lane-btns') || e.target.closest('[data-color-dot]') || e.target.closest('.nm')) return;
   var paneEl = head.closest('.pane');
   if (!paneEl) return;
   e.preventDefault();
@@ -1395,6 +1397,7 @@ document.getElementById('canvas').addEventListener('mousedown', function(e) {
   dragState.active = true;
   dragState.fromSid = sid;
   paneEl.classList.add('drag-source');
+  document.body.classList.add('is-dragging');
 });
 
 document.getElementById('canvas').addEventListener('click', function(e) {
@@ -2764,6 +2767,16 @@ document.getElementById('canvas').addEventListener('input', function(e) {
   var sid = inp.id.replace('search-inp-', '');
   runSearch(sid);
 });
+document.addEventListener('keydown', function(e) {
+  if (!dragState.active) return;
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.pane.drag-source').forEach(function(p) { p.classList.remove('drag-source'); });
+    document.querySelectorAll('.pane.drag-target').forEach(function(p) { p.classList.remove('drag-target'); });
+    document.body.classList.remove('is-dragging');
+    dragState.active = false;
+    dragState.fromSid = null;
+  }
+});
 document.addEventListener('mousemove', function(e) {
   if (!dragState.active) return;
   document.querySelectorAll('.pane.drag-target').forEach(function(p) { p.classList.remove('drag-target'); });
@@ -2788,6 +2801,7 @@ document.addEventListener('mouseup', function(e) {
   var fromSid = dragState.fromSid;
   dragState.active = false;
   dragState.fromSid = null;
+  document.body.classList.remove('is-dragging');
   if (!toSid || toSid === fromSid) return;
   var tree = layoutTrees[currentTab];
   if (!tree) return;
