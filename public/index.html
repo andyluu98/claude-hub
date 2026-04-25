@@ -572,6 +572,11 @@ button[data-zoom] { font-style:normal; }
 [data-theme="light"] #inp-filter:focus { background:#fff; }
 .filter-wrap { position:relative; display:flex; align-items:center; }
 .filter-wrap::before { content:'🔍'; position:absolute; left:8px; font-size:11px; pointer-events:none; }
+#color-picker-pop { position:fixed; z-index:950; background:var(--panel-solid); border:1px solid var(--border-strong); border-radius:10px; padding:10px; display:flex; gap:8px; align-items:center; box-shadow:var(--shadow-lg); }
+.cp-swatch { width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:transform .1s, box-shadow .1s; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; }
+.cp-swatch:hover { transform:scale(1.2); box-shadow:0 0 8px currentColor; }
+.cp-swatch.clear { background:transparent !important; border-color:var(--border-strong); color:var(--muted); }
+.pane-head .dot[style] { cursor:pointer; }
 </style>
 </head>
 <body>
@@ -685,6 +690,8 @@ button[data-zoom] { font-style:normal; }
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
 var sessionFilter = '';
+var paneColors = JSON.parse(localStorage.getItem('claude-hub-colors') || '{}');
+var COLOR_PALETTE = ['', '#f85149', '#e3b341', '#3fb950', '#58a6ff', '#a371f7', '#f0883e', '#ec6547'];
 function changeFontSize(delta) {
   termFontSize = Math.max(8, Math.min(24, termFontSize + delta));
   localStorage.setItem('claude-hub-fontsize', termFontSize);
@@ -1095,7 +1102,7 @@ function createPaneElement(s) {
   var lane = s.lane || 'active';
   el.innerHTML =
     '<div class="pane-head">' +
-      '<span class="dot ' + s.status + '"></span>' +
+      '<span class="dot ' + s.status + '" data-color-dot="' + s.id + '" title="Click to set color label"></span>' +
       '<span class="nm">' + esc(s.name) + '</span>' +
       (s.autoAccept ? '<span class="auto">AUTO</span>' : '') +
       '<span class="folder">' + esc(s.cwdShort || '?') + '</span>' +
@@ -1188,6 +1195,7 @@ function createPaneElement(s) {
   });
 
   panes[s.id] = { term: term, ws: ws, fit: fit, el: el, opened: false };
+  applyPaneColor(s.id);
 }
 
 function addPane(s) {
@@ -1300,6 +1308,8 @@ function requestSplit(sid, dir) {
 }
 
 document.getElementById('canvas').addEventListener('click', function(e) {
+  var colorDot = e.target.closest('[data-color-dot]');
+  if (colorDot) { e.stopPropagation(); showColorPicker(colorDot.dataset.colorDot, colorDot); return; }
   var zoomBtn = e.target.closest('[data-zoom]');
   if (zoomBtn) { toggleZoom(zoomBtn.dataset.zoom); return; }
   var splitH = e.target.closest('[data-split-h]');
@@ -1375,6 +1385,48 @@ window.addEventListener('resize', function() {
 function toggleZoom(sid) {
   zoomedSid = (zoomedSid === sid) ? null : sid;
   rebuildCanvas();
+}
+
+function applyPaneColor(sid) {
+  var p = panes[sid];
+  if (!p) return;
+  var dot = p.el.querySelector('.dot');
+  if (!dot) return;
+  var c = paneColors[sid];
+  if (c) { dot.style.background = c; dot.style.boxShadow = '0 0 8px ' + c; dot.style.animation = 'none'; }
+  else   { dot.style.background = ''; dot.style.boxShadow = ''; dot.style.animation = ''; }
+}
+
+function showColorPicker(sid, anchorEl) {
+  var existing = document.getElementById('color-picker-pop');
+  if (existing) { existing.remove(); return; }
+  var pop = document.createElement('div');
+  pop.id = 'color-picker-pop';
+  var rect = anchorEl.getBoundingClientRect();
+  pop.style.left = rect.left + 'px';
+  pop.style.top  = (rect.bottom + 6) + 'px';
+  COLOR_PALETTE.forEach(function(c) {
+    var sw = document.createElement('div');
+    sw.className = 'cp-swatch' + (!c ? ' clear' : '');
+    sw.style.background = c || 'transparent';
+    sw.style.borderColor = c || '';
+    if (!c) sw.textContent = '×';
+    sw.title = c || 'Default';
+    sw.addEventListener('click', function() {
+      if (c) paneColors[sid] = c; else delete paneColors[sid];
+      localStorage.setItem('claude-hub-colors', JSON.stringify(paneColors));
+      applyPaneColor(sid);
+      pop.remove();
+    });
+    pop.appendChild(sw);
+  });
+  document.body.appendChild(pop);
+  setTimeout(function() {
+    function dismiss(ev) {
+      if (!pop.contains(ev.target)) { pop.remove(); document.removeEventListener('mousedown', dismiss); }
+    }
+    document.addEventListener('mousedown', dismiss);
+  }, 0);
 }
 
 function toggleOverseer() {
