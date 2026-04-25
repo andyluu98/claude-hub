@@ -392,7 +392,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
 }
 .pane-head button:hover { color:var(--text); background:rgba(255,255,255,.08); }
 .pane-head button[data-remove]:hover { color:var(--red); background:rgba(248,81,73,.12); }
-.pane-body { flex:1; padding:6px; overflow:hidden; min-height:0; background:#000; }
+.pane-body { flex:1; padding:6px; overflow:hidden; min-height:0; background:#000; position:relative; }
 .pane-body .xterm-wrap { width:100%; height:100%; }
 
 /* Modal — modernized */
@@ -629,6 +629,11 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
 #template-panel .tmpl-sep { height:1px; background:var(--border); margin:6px 0; }
 #template-panel .tmpl-action { padding:6px 8px; font-size:12px; color:var(--text-dim); cursor:pointer; border-radius:7px; display:flex; align-items:center; gap:6px; }
 #template-panel .tmpl-action:hover { background:rgba(88,166,255,.08); color:var(--text); }
+.term-overlay { position:absolute; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:rgba(7,9,13,.82); color:var(--text-dim); font-size:13px; text-align:center; pointer-events:none; }
+.term-overlay .ov-icon { font-size:22px; }
+.term-overlay .ov-text { line-height:1.5; }
+.term-overlay button { pointer-events:auto; padding:6px 16px; border-radius:7px; border:1px solid var(--border-strong); background:var(--panel-solid); color:var(--text); cursor:pointer; font-size:12px; }
+.term-overlay button:hover { background:var(--panel); }
 </style>
 </head>
 <body>
@@ -767,6 +772,7 @@ var dragState = { active: false, fromSid: null };
 var sessionTags = JSON.parse(localStorage.getItem('claude-hub-tags') || '{}');
 var sessionTemplates = JSON.parse(localStorage.getItem('claude-hub-templates') || '[]');
 var templateDismiss = null;
+var TERM_RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
 var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 var zoomedSid = null;
 var sessionFilter = '';
@@ -1251,16 +1257,26 @@ function createPaneElement(s) {
     else term.write(e.data);
   };
   ws.onopen = function() {
+    var pp = panes[s.id];
+    if (!pp) return;
+    pp.reconnectAttempt = 0;
+    hideTermOverlay(s.id);
     setTimeout(function() {
-      var pp = panes[s.id];
-      if (pp && pp.opened) {
-        try { pp.fit.fit(); ws.send(JSON.stringify({ type:'resize', cols:term.cols, rows:term.rows })); } catch(_){}
+      var pp2 = panes[s.id];
+      if (pp2 && pp2.opened) {
+        try { pp2.fit.fit(); pp2.ws.send(JSON.stringify({ type:'resize', cols:term.cols, rows:term.rows })); } catch(_){}
       }
     }, 100);
   };
-  term.onData(function(d) { if (ws.readyState === 1) ws.send(d); });
+  ws.onclose = function() { scheduleTermReconnect(s.id); };
+  ws.onerror = function() { ws.close(); };
+  term.onData(function(d) {
+    var pp = panes[s.id];
+    if (pp && pp.ws && pp.ws.readyState === 1) pp.ws.send(d);
+  });
   term.onResize(function(sz) {
-    if (ws.readyState === 1) ws.send(JSON.stringify({ type:'resize', cols:sz.cols, rows:sz.rows }));
+    var pp = panes[s.id];
+    if (pp && pp.ws && pp.ws.readyState === 1) pp.ws.send(JSON.stringify({ type:'resize', cols:sz.cols, rows:sz.rows }));
   });
 
   term.attachCustomKeyEventHandler(function(ev) {
@@ -1311,7 +1327,7 @@ function createPaneElement(s) {
     toast('Sent ' + files.length + ' file(s) to terminal');
   });
 
-  panes[s.id] = { term: term, ws: ws, fit: fit, search: search, el: el, opened: false };
+  panes[s.id] = { term: term, ws: ws, fit: fit, search: search, el: el, opened: false, reconnectAttempt: 0, reconnectTimer: null };
   applyPaneColor(s.id);
   applyPaneTags(s.id);
 }
@@ -2053,6 +2069,71 @@ function deleteTemplate(id) {
   localStorage.setItem('claude-hub-templates', JSON.stringify(sessionTemplates));
   renderTemplateList();
   toast('Template deleted');
+}
+
+function showTermOverlay(sid, text, showBtn) {
+  var p = panes[sid];
+  if (!p) return;
+  var body = p.el.querySelector('.pane-body');
+  if (!body) return;
+  var ov = body.querySelector('.term-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.className = 'term-overlay';
+    body.appendChild(ov);
+  }
+  ov.innerHTML = '<span class="ov-icon">⚠</span><span class="ov-text">' + text + '</span>';
+  if (showBtn) {
+    var btn = document.createElement('button');
+    btn.textContent = 'Reconnect';
+    btn.addEventListener('click', function() { reconnectTerm(sid); });
+    ov.appendChild(btn);
+  }
+}
+
+function hideTermOverlay(sid) {
+  var p = panes[sid];
+  if (!p) return;
+  var body = p.el.querySelector('.pane-body');
+  if (!body) return;
+  var ov = body.querySelector('.term-overlay');
+  if (ov) ov.remove();
+}
+
+function scheduleTermReconnect(sid) {
+  var p = panes[sid];
+  if (!p) return;
+  var attempt = p.reconnectAttempt;
+  if (attempt > TERM_RECONNECT_DELAYS.length) return;
+  if (p.reconnectTimer) { clearTimeout(p.reconnectTimer); p.reconnectTimer = null; }
+  if (attempt >= TERM_RECONNECT_DELAYS.length) {
+    showTermOverlay(sid, 'Disconnected', true);
+    return;
+  }
+  var delay = TERM_RECONNECT_DELAYS[attempt];
+  p.reconnectAttempt++;
+  showTermOverlay(sid, 'Reconnecting… (' + (delay / 1000) + 's)', false);
+  p.reconnectTimer = setTimeout(function() { reconnectTerm(sid); }, delay);
+}
+
+function reconnectTerm(sid) {
+  var p = panes[sid];
+  if (!p) return;
+  if (p.reconnectTimer) { clearTimeout(p.reconnectTimer); p.reconnectTimer = null; }
+  var newWs = new WebSocket('ws://' + location.host + '/term/' + sid);
+  newWs.binaryType = 'arraybuffer';
+  newWs.onmessage = function(e) {
+    if (e.data instanceof ArrayBuffer) p.term.write(new Uint8Array(e.data));
+    else p.term.write(e.data);
+  };
+  newWs.onopen = function() {
+    p.reconnectAttempt = 0;
+    hideTermOverlay(sid);
+    try { p.fit.fit(); newWs.send(JSON.stringify({ type:'resize', cols:p.term.cols, rows:p.term.rows })); } catch(_){}
+  };
+  newWs.onclose = function() { scheduleTermReconnect(sid); };
+  newWs.onerror = function() { newWs.close(); };
+  p.ws = newWs;
 }
 
 function toggleOverseer() {
