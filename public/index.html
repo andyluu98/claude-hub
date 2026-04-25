@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="/xterm-css/xterm.css">
 <script src="/xterm/xterm.js"></script>
 <script src="/xterm-fit/xterm-addon-fit.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-search@0.1.0/lib/addon-search.min.js"></script>
+<script src="/xterm-search/xterm-addon-search.js"></script>
 <style>
 :root {
   --bg:#07090d; --bg2:#0d1117; --panel:rgba(22,27,34,.85); --panel-solid:#161b22;
@@ -1234,8 +1234,13 @@ function createPaneElement(s) {
   });
   var fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
-  var search = new SearchAddon.SearchAddon();
-  term.loadAddon(search);
+  var search = null;
+  try {
+    if (typeof SearchAddon !== 'undefined') {
+      search = new SearchAddon.SearchAddon();
+      term.loadAddon(search);
+    }
+  } catch(_){}
   // term.open() is deferred until the pane element is in the real DOM (see openAndFitSubtree)
 
   var ws = new WebSocket('ws://' + location.host + '/term/' + s.id);

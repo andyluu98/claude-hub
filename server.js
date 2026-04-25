@@ -277,6 +277,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/xterm', express.static(path.join(__dirname, 'node_modules/xterm/lib')));
 app.use('/xterm-css', express.static(path.join(__dirname, 'node_modules/xterm/css')));
 app.use('/xterm-fit', express.static(path.join(__dirname, 'node_modules/xterm-addon-fit/lib')));
+app.use('/xterm-search', express.static(path.join(__dirname, 'node_modules/xterm-addon-search/lib')));
 app.get('/api/sessions', (_, res) => res.json([...sessions.values()].map(s => s.toJSON())));
 
 app.get('/api/fs', (req, res) => {
