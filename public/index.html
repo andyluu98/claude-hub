@@ -668,7 +668,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
 <div id="toast"></div>
 
 <script>
-var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize')) || 12;
+var termFontSize = parseInt(localStorage.getItem('claude-hub-fontsize'), 10) || 12;
 function changeFontSize(delta) {
   termFontSize = Math.max(8, Math.min(24, termFontSize + delta));
   localStorage.setItem('claude-hub-fontsize', termFontSize);
