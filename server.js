@@ -15,6 +15,7 @@ const path      = require('path');
 const { v4: uuid } = require('uuid');
 const { spawn } = require('child_process');
 const os = require('os');
+const platform = require('./platform.js');
 
 let pty;
 try { pty = require('node-pty'); }
@@ -51,7 +52,7 @@ class Session {
     opts = opts || {};
     this.id         = id;
     this.name       = name;
-    this.cwd        = cwd || process.env.USERPROFILE || 'C:\\';
+    this.cwd        = cwd || platform.homeDir();
     this.autoAccept = !!autoAccept;
     this.status     = opts.status || 'stopped'; // running | stopped
     this.lane       = opts.lane || 'active';    // active | pending | done
@@ -146,33 +147,32 @@ function startPty(s, opts) {
   // Validate cwd
   let workCwd = s.cwd;
   try { if (!fs.existsSync(workCwd) || !fs.statSync(workCwd).isDirectory()) throw 0; }
-  catch { workCwd = process.env.USERPROFILE || 'C:\\'; s.cwd = workCwd; }
+  catch { workCwd = platform.homeDir(); s.cwd = workCwd; }
 
-  // Find claude.exe
-  const candidates = [
-    path.join(process.env.USERPROFILE || '', '.local', 'bin', 'claude.exe'),
-    'claude.exe',
-    'claude.cmd',
-  ];
+  // Find claude binary (cross-platform)
+  const claudeBin = platform.findClaudeBinary();
+  if (!claudeBin) {
+    console.error('Cannot find Claude Code CLI. Install from https://claude.com/claude-code, then ensure `claude` (Win: claude.exe) is on PATH.');
+    s.status = 'stopped';
+    pushSession(s);
+    return;
+  }
 
   const args = [];
   if (opts.resume) args.push('--continue'); // resume most recent conversation in cwd
   if (s.autoAccept) args.push('--dangerously-skip-permissions');
   let spawned = false;
-  for (const cmd of candidates) {
-    try {
-      s.proc = pty.spawn(cmd, args, {
-        name: 'xterm-256color',
-        cols: 120, rows: 30,
-        cwd: workCwd,
-        env: { ...process.env, TERM: 'xterm-256color', FORCE_COLOR: '1' },
-      });
-      spawned = true;
-      break;
-    } catch (_) {}
-  }
+  try {
+    s.proc = pty.spawn(claudeBin, args, {
+      name: 'xterm-256color',
+      cols: 120, rows: 30,
+      cwd: workCwd,
+      env: { ...process.env, TERM: 'xterm-256color', FORCE_COLOR: '1' },
+    });
+    spawned = true;
+  } catch (_) {}
   if (!spawned) {
-    console.error('Cannot find claude.exe');
+    console.error('Failed to spawn Claude Code CLI: ' + claudeBin);
     s.status = 'stopped';
     pushSession(s);
     return;
@@ -289,8 +289,8 @@ app.get('/api/fs', (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-const RECENT_FILE    = path.join(process.env.USERPROFILE || '.', '.claude-hub-recent.json');
-const BOOKMARKS_FILE = path.join(process.env.USERPROFILE || '.', '.claude-hub-bookmarks.json');
+const RECENT_FILE    = path.join(platform.homeDir(), '.claude-hub-recent.json');
+const BOOKMARKS_FILE = path.join(platform.homeDir(), '.claude-hub-bookmarks.json');
 
 function loadJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
@@ -426,43 +426,6 @@ app.delete('/api/sessions/:id', (req, res) => {
 });
 
 // ── File operations ───────────────────────────────────────────────
-// Delete file/folder to Recycle Bin via VBScript + Shell.Application COM
-// (tranh PowerShell vi may user co the loi .NET ServicePointManager)
-function recycleDelete(target, cb) {
-  try {
-    if (!fs.existsSync(target)) return cb('path not found');
-    const parent = path.dirname(target);
-    const name   = path.basename(target);
-    // Escape " in VBScript string parameter
-    const esc = s => s.replace(/"/g, '""');
-    const vbs =
-      'Set oShell = CreateObject("Shell.Application")\r\n' +
-      'Set oFolder = oShell.Namespace("' + esc(parent) + '")\r\n' +
-      'If oFolder Is Nothing Then WScript.Quit 2\r\n' +
-      'Set oItem = oFolder.ParseName("' + esc(name) + '")\r\n' +
-      'If oItem Is Nothing Then WScript.Quit 3\r\n' +
-      // Verb "delete" sends to Recycle Bin, no confirm popup due to flag & H100
-      'oItem.InvokeVerb("delete")\r\n';
-    const tmp = path.join(os.tmpdir(), 'claude-hub-recycle-' + Date.now() + '-' + Math.random().toString(36).slice(2,8) + '.vbs');
-    fs.writeFileSync(tmp, vbs, 'utf8');
-    const proc = spawn('cscript.exe', ['//nologo', '//B', tmp], { windowsHide: true });
-    let err = '';
-    proc.stderr.on('data', d => err += d.toString());
-    proc.on('exit', code => {
-      try { fs.unlinkSync(tmp); } catch(_) {}
-      if (code === 0) {
-        // Verify file was deleted (InvokeVerb is async, wait a bit)
-        setTimeout(() => {
-          if (!fs.existsSync(target)) cb(null);
-          else cb('Delete khong thanh cong (file van ton tai)');
-        }, 300);
-      } else {
-        cb(err || ('cscript exit ' + code));
-      }
-    });
-    proc.on('error', e => { try{fs.unlinkSync(tmp);}catch(_){} cb(e.message); });
-  } catch(e) { cb(e.message); }
-}
 
 function uniqueDuplicate(src) {
   const dir = path.dirname(src);
@@ -480,7 +443,7 @@ app.post('/api/file-open', (req, res) => {
   const p = String(req.body.path || '').trim();
   if (!p || hasShellMeta(p) || !fs.existsSync(p)) return res.status(400).json({ error: 'invalid path' });
   try {
-    spawn('cmd.exe', ['/c', 'start', '""', p], { detached:true, stdio:'ignore', windowsVerbatimArguments:false }).unref();
+    platform.openFileWithDefault(p);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -490,7 +453,7 @@ app.post('/api/file-reveal', (req, res) => {
   const p = String(req.body.path || '').trim();
   if (!p || hasShellMeta(p) || !fs.existsSync(p)) return res.status(400).json({ error: 'invalid path' });
   try {
-    spawn('explorer.exe', ['/select,', p], { detached:true, stdio:'ignore' }).unref();
+    platform.revealInFileManager(p);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -499,7 +462,7 @@ app.post('/api/file-reveal', (req, res) => {
 app.post('/api/file-delete', (req, res) => {
   const p = String(req.body.path || '').trim();
   if (!p || !fs.existsSync(p)) return res.status(400).json({ error: 'invalid path' });
-  recycleDelete(p, (err) => {
+  platform.moveToTrash(p, (err) => {
     if (err) return res.status(500).json({ error: err });
     res.json({ ok: true });
   });
@@ -593,23 +556,14 @@ app.post('/api/open', (req, res) => {
     if (!fs.existsSync(p)) return res.status(404).json({ error: 'path not found' });
   } catch(_) { return res.status(400).json({ error: 'invalid path' }); }
   try {
-    if (action === 'explorer') {
-      spawn('explorer.exe', [p], { detached: true, stdio: 'ignore' }).unref();
-    } else if (action === 'vscode') {
-      // code on Windows is code.cmd — Node requires shell:true to resolve .cmd
-      // on PATH. Safe here because p has been validated against SHELL_META_RE.
-      spawn('code', [p], { detached: true, stdio: 'ignore', shell: true }).unref();
-    } else if (action === 'cmd') {
-      // Open a new cmd window in the directory. p is validated, so embedding
-      // it in the `cd /d` argument cannot break out of the quoted string.
-      spawn('cmd.exe', ['/c', 'start', '', 'cmd.exe', '/k', 'cd /d "' + p + '"'], {
-        detached: true, stdio: 'ignore', shell: false,
-      }).unref();
-    } else {
+    platform.openFolder(p, action);
+    res.json({ ok: true });
+  } catch(e) {
+    if (e && e.message && /unknown action/.test(e.message)) {
       return res.status(400).json({ error: 'unknown action' });
     }
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    res.status(500).json({ error: e && e.message || String(e) });
+  }
 });
 
 app.get('/api/overseer', (_, res) => res.json({ rule: buildRuleSummary() }));
