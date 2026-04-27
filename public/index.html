@@ -1404,8 +1404,11 @@ function createPaneElement(s) {
     pp._clickPosAttached = true;
     term.element.addEventListener('click', function(e) {
       try {
-        if (term.hasSelection && term.hasSelection()) return;
+        if (!e.altKey) return;
         if (e.detail !== 1) return;
+        var mouseMode = false;
+        try { mouseMode = !!(term.modes && term.modes.mouseTrackingMode && term.modes.mouseTrackingMode !== 'none'); } catch(_){}
+        if (mouseMode) return;
         var dims = getCellSize(term);
         if (!dims) return;
         var rect = term.element.getBoundingClientRect();
@@ -1417,6 +1420,7 @@ function createPaneElement(s) {
         if (dx === 0) return;
         var pp2 = panes[s.id];
         if (!pp2 || !pp2.ws) return;
+        e.preventDefault();
         sendCursorMove(pp2.ws, term, dx);
       } catch(_){}
     });
