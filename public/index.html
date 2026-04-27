@@ -393,6 +393,7 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
 .pane-head button:hover { color:var(--text); background:rgba(255,255,255,.08); }
 .pane-head button[data-remove]:hover { color:var(--red); background:rgba(248,81,73,.12); }
 .pane-body { flex:1; padding:6px; overflow:hidden; min-height:0; background:#000; position:relative; }
+.pane { container-type: inline-size; container-name: pane; }
 .pane-body .xterm-wrap { width:100%; height:100%; }
 
 /* Modal — modernized */
@@ -634,6 +635,29 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
 .term-overlay .ov-text { line-height:1.5; }
 .term-overlay button { pointer-events:auto; padding:6px 16px; border-radius:7px; border:1px solid var(--border-strong); background:var(--panel-solid); color:var(--text); cursor:pointer; font-size:12px; }
 .term-overlay button:hover { background:var(--panel); }
+@container pane (max-width: 379px) {
+  .pane-head [data-export],
+  .pane-head [data-note] { display: none; }
+}
+@container pane (max-width: 339px) {
+  .pane-head [data-folder],
+  .pane-head [data-zoom] { display: none; }
+}
+@container pane (max-width: 289px) {
+  .pane-head .lane-btns,
+  .pane-head .auto { display: none; }
+}
+@container pane (max-width: 249px) {
+  .pane-head .folder { display: none; }
+}
+@container pane (max-width: 209px) {
+  .pane-head [data-split-h],
+  .pane-head [data-split-v] { display: none; }
+}
+@container pane (max-width: 169px) {
+  .pane-head .nm { max-width: 80px; }
+  .pane-head .tag-area { display: none; }
+}
 </style>
 </head>
 <body>
