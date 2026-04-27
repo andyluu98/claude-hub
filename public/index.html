@@ -1091,17 +1091,25 @@ function connectCtrl() {
   ctrlWs.onmessage = function(e) {
     var msg = JSON.parse(e.data);
     if (msg.type === 'init') {
-      msg.sessions.forEach(function(s) { state[s.id] = s; });
+      msg.sessions.forEach(function(s) { state[s.id] = s; prevStatus[s.id] = s.status; });
       rebuildGrid();
       if (msg.overseer) document.getElementById('overseer-rule').textContent = msg.overseer.rule;
     } else if (msg.type === 'session_created') {
       state[msg.session.id] = msg.session;
+      prevStatus[msg.session.id] = msg.session.status;
       addPane(msg.session);
     } else if (msg.type === 'session_update') {
+      var prev = prevStatus[msg.session.id];
       state[msg.session.id] = msg.session;
+      var nw = msg.session.status;
+      if (prev === 'running' && (nw === 'idle' || nw === 'done')) {
+        notifySessionChange(msg.session.id, nw);
+      }
+      prevStatus[msg.session.id] = nw;
       updatePaneHead(msg.session.id);
     } else if (msg.type === 'session_removed') {
       delete state[msg.id];
+      delete prevStatus[msg.id];
       removePane(msg.id);
     } else if (msg.type === 'overseer_rule') {
       document.getElementById('overseer-rule').textContent = msg.rule;
