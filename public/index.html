@@ -676,6 +676,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
   <div class="filter-wrap">
     <input id="inp-filter" type="text" placeholder="Filter sessions..." autocomplete="off">
   </div>
+  <button class="btn btn-ghost" id="btn-sidebar-main" onclick="toggleSidebar()" title="Show/hide files">&#x1F4C1; Files</button>
   <button class="btn btn-ghost" id="btn-notify" onclick="toggleNotifications()" title="Notifications off">&#x1F514;</button>
   <button class="btn btn-ghost" id="btn-broadcast" onclick="toggleBroadcast()" title="Send command to all running sessions">&#x21F6; Broadcast</button>
   <div style="position:relative">
@@ -2513,8 +2514,17 @@ function setActiveSession(sid) {
   renderSbSelected();
 }
 
+function updateSidebarBtn() {
+  var btn = document.getElementById('btn-sidebar-main');
+  if (!btn) return;
+  var collapsed = document.getElementById('sidebar').classList.contains('collapsed');
+  btn.style.color = collapsed ? '' : 'var(--orange)';
+  btn.title = collapsed ? 'Show files' : 'Hide files';
+}
+
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('collapsed');
+  updateSidebarBtn();
   setTimeout(function() { fitSubtree(layoutTrees[currentTab]); }, 220);
 }
 
@@ -3331,6 +3341,7 @@ document.addEventListener('mouseup', function(e) {
 });
 
 updateNotifyBtn();
+updateSidebarBtn();
 connectCtrl();
 </script>
 </body>
