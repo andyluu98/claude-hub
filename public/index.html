@@ -1344,6 +1344,34 @@ function createPaneElement(s) {
   panes[s.id] = { term: term, ws: ws, fit: fit, search: search, el: el, opened: false, reconnectAttempt: 0, reconnectTimer: null };
   applyPaneColor(s.id);
   applyPaneTags(s.id);
+
+  // Click-to-position cursor — registered AFTER term.open() inside openAndFitSubtree
+  // We attach when term.opened becomes true; use a one-shot poll
+  (function attachClickPos() {
+    var pp = panes[s.id];
+    if (!pp) return;
+    if (!pp.opened || !term.element) { setTimeout(attachClickPos, 100); return; }
+    if (pp._clickPosAttached) return;
+    pp._clickPosAttached = true;
+    term.element.addEventListener('click', function(e) {
+      try {
+        if (term.hasSelection && term.hasSelection()) return;
+        if (e.detail !== 1) return;
+        var dims = getCellSize(term);
+        if (!dims) return;
+        var rect = term.element.getBoundingClientRect();
+        var col = Math.floor((e.clientX - rect.left) / dims.w);
+        var row = Math.floor((e.clientY - rect.top)  / dims.h);
+        var cur = term.buffer.active;
+        if (row !== cur.cursorY) return;
+        var dx = col - cur.cursorX;
+        if (dx === 0) return;
+        var pp2 = panes[s.id];
+        if (!pp2 || !pp2.ws) return;
+        sendCursorMove(pp2.ws, term, dx);
+      } catch(_){}
+    });
+  })();
 }
 
 function addPane(s) {
