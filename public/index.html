@@ -676,6 +676,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
   <div class="filter-wrap">
     <input id="inp-filter" type="text" placeholder="Filter sessions..." autocomplete="off">
   </div>
+  <button class="btn btn-ghost" id="btn-notify" onclick="toggleNotifications()" title="Notifications off">&#x1F514;</button>
   <button class="btn btn-ghost" id="btn-broadcast" onclick="toggleBroadcast()" title="Send command to all running sessions">&#x21F6; Broadcast</button>
   <div style="position:relative">
     <button class="btn btn-ghost" id="btn-presets" onclick="togglePresetPanel()" title="Layout presets">&#x1F4CB; Layouts</button>
@@ -3247,6 +3248,7 @@ document.addEventListener('mouseup', function(e) {
   rebuildCanvas();
 });
 
+updateNotifyBtn();
 connectCtrl();
 </script>
 </body>
