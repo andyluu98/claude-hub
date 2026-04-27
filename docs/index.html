@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Hub — Multi-Session Claude Code Dashboard</title>
-<meta name="description" content="A Windows-native dashboard for managing multiple Claude Code sessions in parallel with real PTY terminals.">
+<meta name="description" content="A cross-platform dashboard (Windows, macOS, Linux) for managing multiple Claude Code sessions in parallel with real PTY terminals.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -814,15 +814,15 @@ body.lang-vi .vi{display:revert}
   <div class="hero-content reveal">
     <div class="hero-eyebrow">
       <span class="pulse"></span>
-      <span class="en">Open Source &middot; Windows Native</span>
-      <span class="vi">M&#227; ngu&#7891;n m&#7903; &middot; Windows Native</span>
+      <span class="en">Open Source &middot; Windows / macOS / Linux</span>
+      <span class="vi">M&#227; ngu&#7891;n m&#7903; &middot; Windows / macOS / Linux</span>
     </div>
     <h1 id="hero-title">Claude Hub<span class="cursor"></span></h1>
-    <p class="tagline en">A Windows-native dashboard for managing multiple Claude Code sessions in parallel. Real PTY terminals piped to xterm.js &mdash; the actual interactive TUI, not a fake chat wrapper.</p>
-    <p class="tagline vi">Dashboard Windows-native cho ph&#233;p qu&#7843;n l&#253; nhi&#7873;u phi&#234;n Claude Code song song. Terminal PTY th&#7921;c, pipe qua xterm.js &mdash; TUI t&#432;&#417;ng t&#225;c th&#7853;t, kh&#244;ng ph&#7843;i chat gi&#7843;.</p>
+    <p class="tagline en">A cross-platform dashboard for managing multiple Claude Code sessions in parallel on Windows, macOS, and Linux. Real PTY terminals piped to xterm.js &mdash; the actual interactive TUI, not a fake chat wrapper.</p>
+    <p class="tagline vi">Dashboard &#273;a n&#7873;n t&#7843;ng cho ph&#233;p qu&#7843;n l&#253; nhi&#7873;u phi&#234;n Claude Code song song tr&#234;n Windows, macOS v&#224; Linux. Terminal PTY th&#7921;c, pipe qua xterm.js &mdash; TUI t&#432;&#417;ng t&#225;c th&#7853;t, kh&#244;ng ph&#7843;i chat gi&#7843;.</p>
     <div class="badges">
       <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node >= 18">
-      <img src="https://img.shields.io/badge/platform-Windows-blue" alt="Windows">
+      <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Windows | macOS | Linux">
       <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
       <img src="https://img.shields.io/github/stars/andyluu98/claude-hub?style=social" alt="GitHub Stars">
     </div>
@@ -918,7 +918,7 @@ body.lang-vi .vi{display:revert}
         <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
       </div>
       <h3><span class="en">Real Terminals</span><span class="vi">Terminal Th&#7853;t</span></h3>
-      <p><span class="en">Each session runs a real claude.exe via node-pty. Full color rendering, interactive prompts, and genuine TUI &mdash; not simulated output.</span><span class="vi">M&#7895;i session ch&#7841;y claude.exe th&#7853;t qua node-pty. Render m&#224;u &#273;&#7847;y &#273;&#7911;, prompt t&#432;&#417;ng t&#225;c, v&#224; TUI nguy&#234;n b&#7843;n &mdash; kh&#244;ng gi&#7843; l&#7853;p.</span></p>
+      <p><span class="en">Each session runs the real <code>claude</code> binary via node-pty. Full color rendering, interactive prompts, and genuine TUI &mdash; not simulated output.</span><span class="vi">M&#7895;i session ch&#7841;y binary <code>claude</code> th&#7853;t qua node-pty. Render m&#224;u &#273;&#7847;y &#273;&#7911;, prompt t&#432;&#417;ng t&#225;c, v&#224; TUI nguy&#234;n b&#7843;n &mdash; kh&#244;ng gi&#7843; l&#7853;p.</span></p>
     </div>
     <div class="value-card reveal reveal-scale">
       <div class="value-icon">
@@ -933,8 +933,8 @@ body.lang-vi .vi{display:revert}
         <!-- Windows icon -->
         <svg viewBox="0 0 24 24"><path d="M3 5.5L10.5 4.5V11.5H3V5.5Z"/><path d="M11.5 4.3L21 3V11.5H11.5V4.3Z"/><path d="M3 12.5H10.5V19.5L3 18.5V12.5Z"/><path d="M11.5 12.5H21V21L11.5 19.7V12.5Z"/></svg>
       </div>
-      <h3><span class="en">Windows Native</span><span class="vi">Windows Native</span></h3>
-      <p><span class="en">Built specifically for Windows with ConPTY. No WSL needed, no Docker, no VMs. Just clone, install, and run.</span><span class="vi">X&#226;y d&#7921;ng ri&#234;ng cho Windows v&#7899;i ConPTY. Kh&#244;ng c&#7847;n WSL, Docker, hay VM. Ch&#7881; clone, install, v&#224; ch&#7841;y.</span></p>
+      <h3><span class="en">Cross-Platform</span><span class="vi">&#272;a N&#7873;n T&#7843;ng</span></h3>
+      <p><span class="en">Runs natively on Windows (ConPTY), macOS, and Linux. No WSL needed, no Docker, no VMs. Just clone, install, and run.</span><span class="vi">Ch&#7841;y native tr&#234;n Windows (ConPTY), macOS v&#224; Linux. Kh&#244;ng c&#7847;n WSL, Docker, hay VM. Ch&#7881; clone, install, v&#224; ch&#7841;y.</span></p>
     </div>
   </div>
 </section>
@@ -967,7 +967,7 @@ body.lang-vi .vi{display:revert}
         <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
       </div>
       <h3><span class="en">Real PTY Terminals</span><span class="vi">Terminal PTY Th&#7921;c</span></h3>
-      <p><span class="en">Each session spawns a real claude.exe process via node-pty. Raw bytes pipe through WebSocket to xterm.js &mdash; full TUI rendering with colors, prompts, and interactive input.</span><span class="vi">M&#7895;i session kh&#7903;i t&#7841;o process claude.exe th&#7853;t qua node-pty. Byte th&#244; pipe qua WebSocket t&#7899;i xterm.js &mdash; render TUI &#273;&#7847;y &#273;&#7911; v&#7899;i m&#224;u s&#7855;c, prompt, v&#224; input t&#432;&#417;ng t&#225;c.</span></p>
+      <p><span class="en">Each session spawns a real <code>claude</code> process (<code>claude.exe</code> on Windows) via node-pty. Raw bytes pipe through WebSocket to xterm.js &mdash; full TUI rendering with colors, prompts, and interactive input.</span><span class="vi">M&#7895;i session kh&#7903;i t&#7841;o process <code>claude</code> th&#7853;t (<code>claude.exe</code> tr&#234;n Windows) qua node-pty. Byte th&#244; pipe qua WebSocket t&#7899;i xterm.js &mdash; render TUI &#273;&#7847;y &#273;&#7911; v&#7899;i m&#224;u s&#7855;c, prompt, v&#224; input t&#432;&#417;ng t&#225;c.</span></p>
     </div>
 
     <!-- 2. Kanban Lanes -->
@@ -1105,14 +1105,14 @@ body.lang-vi .vi{display:revert}
       <div class="step-body">
         <h4><span class="en">Install dependencies</span><span class="vi">C&#224;i &#273;&#7863;t th&#432; vi&#7879;n</span></h4>
         <p><code>cd claude-hub &amp;&amp; npm install</code></p>
-        <p style="margin-top:var(--sp-2)"><span class="en">Requires Visual Studio Build Tools for node-pty native compilation.</span><span class="vi">C&#7847;n Visual Studio Build Tools &#273;&#7875; compile node-pty.</span></p>
+        <p style="margin-top:var(--sp-2)"><span class="en">Native build tools required for node-pty: Visual Studio Build Tools (Windows), Xcode CLT (macOS), or build-essential (Linux).</span><span class="vi">C&#7847;n build tools cho node-pty: Visual Studio Build Tools (Windows), Xcode CLT (macOS), ho&#7863;c build-essential (Linux).</span></p>
       </div>
     </div>
     <div class="step reveal">
       <div class="step-num">3</div>
       <div class="step-body">
         <h4><span class="en">Launch</span><span class="vi">Kh&#7903;i &#273;&#7897;ng</span></h4>
-        <p><code>start.bat</code> <span class="en">or</span><span class="vi">ho&#7863;c</span> <code>node server.js</code></p>
+        <p><code>start.bat</code> <span class="en">(Windows) /</span><span class="vi">(Windows) /</span> <code>./start.sh</code> <span class="en">(macOS/Linux) or</span><span class="vi">(macOS/Linux) ho&#7863;c</span> <code>node server.js</code></p>
         <p style="margin-top:var(--sp-2)"><span class="en">Browser auto-opens at <code>http://localhost:8765</code></span><span class="vi">Tr&#236;nh duy&#7879;t t&#7921; &#273;&#7897;ng m&#7903; t&#7841;i <code>http://localhost:8765</code></span></p>
       </div>
     </div>
@@ -1221,7 +1221,7 @@ body.lang-vi .vi{display:revert}
     |
     |  node-pty (spawn)
     v
-<span class="p">claude.exe</span> x N sessions
+<span class="p">claude</span> binary x N sessions
     |
     |  PTY I/O
     v
