@@ -1704,6 +1704,36 @@ function toggleNotifications() {
   }
 }
 
+function getCellSize(term) {
+  try {
+    var c = term._core._renderService.dimensions.css.cell;
+    if (c && c.width > 0 && c.height > 0) return { w: c.width, h: c.height };
+  } catch(_){}
+  try {
+    var row = term.element && term.element.querySelector('.xterm-rows > div');
+    if (row) {
+      var r = row.getBoundingClientRect();
+      var len = term.cols || 80;
+      if (r.width > 0 && r.height > 0) return { w: r.width / len, h: r.height };
+    }
+  } catch(_){}
+  return null;
+}
+
+function sendCursorMove(ws, term, dx) {
+  if (!ws || ws.readyState !== 1 || !dx) return;
+  var n = Math.abs(dx);
+  if (n > 200) return;
+  var appMode = false;
+  try { appMode = !!term.modes.applicationCursorKeysMode; } catch(_){}
+  var seq = dx < 0
+    ? (appMode ? '\x1bOD' : '\x1b[D')
+    : (appMode ? '\x1bOC' : '\x1b[C');
+  var out = '';
+  for (var i = 0; i < n; i++) out += seq;
+  ws.send(out);
+}
+
 function toggleBroadcast() {
   var bar = document.getElementById('broadcast-bar');
   var inp = document.getElementById('inp-broadcast');
