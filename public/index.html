@@ -1307,6 +1307,30 @@ function createPaneElement(s) {
       }
       return true;
     }
+    if ((ev.key === 'Delete' || ev.key === 'Backspace') && term.hasSelection && term.hasSelection()) {
+      try {
+        var sp = term.getSelectionPosition && term.getSelectionPosition();
+        var cur = term.buffer.active;
+        var curAbsRow = cur.viewportY + cur.cursorY;
+        if (sp && sp.startRow === sp.endRow && sp.startRow === curAbsRow) {
+          var ws_ = panes[s.id] && panes[s.id].ws;
+          if (ws_ && ws_.readyState === 1) {
+            ev.preventDefault();
+            var moveDx = sp.startColumn - cur.cursorX;
+            sendCursorMove(ws_, term, moveDx);
+            var delLen = sp.endColumn - sp.startColumn;
+            if (delLen > 0 && delLen <= 500) {
+              var del = '';
+              for (var di = 0; di < delLen; di++) del += '\x1b[3~';
+              ws_.send(del);
+            }
+            term.clearSelection();
+            return false;
+          }
+        }
+      } catch(_){}
+      return true;
+    }
     if (ev.shiftKey && ev.key === 'Enter') {
       ev.preventDefault();
       var _ws = panes[s.id] && panes[s.id].ws;
