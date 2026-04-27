@@ -1,9 +1,11 @@
 # Claude Hub
 
-A Windows-native dashboard for managing multiple [Claude Code](https://claude.com/claude-code) sessions in parallel. Each session runs a real `claude.exe` PTY, piped raw to an xterm.js terminal in the browser — you get the actual interactive TUI, not a fake chat wrapper.
+A cross-platform dashboard for managing multiple [Claude Code](https://claude.com/claude-code) sessions in parallel. Each session runs a real `claude` PTY, piped raw to an xterm.js terminal in the browser — you get the actual interactive TUI, not a fake chat wrapper.
+
+🌐 **Project site:** https://claudehub.aithetech.com/
 
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -19,33 +21,55 @@ A Windows-native dashboard for managing multiple [Claude Code](https://claude.co
 
 ## Requirements
 
-- **Windows 10/11**
 - **Node.js 18+** — https://nodejs.org
-- **Claude Code CLI** installed and on `PATH` (or at `%USERPROFILE%\.local\bin\claude.exe`) — https://claude.com/claude-code
+- **Claude Code CLI** installed and on `PATH`. Tested locations:
+  - Windows: `%USERPROFILE%\.local\bin\claude.exe`
+  - macOS: `~/.local/bin/claude`, `/opt/homebrew/bin/claude`
+  - Linux: `~/.local/bin/claude`, `/usr/local/bin/claude`
+- Install: https://claude.com/claude-code
+- A modern browser (Chrome 105+, Edge, Firefox 110+, Safari 16+)
 
 ## Install
 
-```bat
+```bash
 git clone https://github.com/andyluu98/claude-hub.git
 cd claude-hub
 npm install
 ```
 
-> `node-pty` is a native addon. `npm install` will build it with `node-gyp` — you need Visual Studio Build Tools or `windows-build-tools` once. If you hit build errors, run `npm install --global windows-build-tools` as admin, then retry.
+> `node-pty` is a native addon. `npm install` will build it with `node-gyp`.
+> - **Windows:** install Visual Studio Build Tools or run `npm install --global windows-build-tools` (admin) once.
+> - **macOS:** Xcode Command Line Tools — `xcode-select --install`
+> - **Linux:** `python3`, `make`, and a C++ compiler — `sudo apt install build-essential` (Debian/Ubuntu) or `sudo dnf groupinstall "Development Tools"` (Fedora).
 
 ## Run
+
+### Windows
 
 ```bat
 start.bat
 ```
 
-or
+Or manually:
 
 ```bat
 node server.js
 ```
 
-Then open http://localhost:8765 — the browser is auto-launched by `start.bat`.
+### macOS / Linux
+
+```sh
+chmod +x start.sh
+./start.sh
+```
+
+Or manually:
+
+```sh
+node server.js
+```
+
+Open http://localhost:8765 — `start.bat` / `start.sh` auto-launches the default browser.
 
 ## Security
 
@@ -65,10 +89,15 @@ Session terminal scrollback (up to ~50KB tail per session) is persisted to `.cla
 ```
 claude-hub/
 ├── server.js              # Express + WebSocket + PTY backend
+├── platform.js            # OS-specific spawn helpers (Win/Mac/Linux)
 ├── public/
 │   └── index.html         # Single-page dashboard (xterm.js)
-├── start.bat              # One-click launcher
-├── pack.bat               # Create distributable zip
+├── docs/
+│   └── index.html         # Public landing page (deployed to Vercel)
+├── start.bat              # Launcher (Windows)
+├── start.sh               # Launcher (macOS/Linux)
+├── pack.bat               # Create distributable zip (Windows)
+├── vercel.json            # Vercel config for landing page
 ├── package.json
 └── LICENSE
 ```
@@ -80,7 +109,7 @@ PRs welcome. Please:
 1. Open an issue first for non-trivial changes
 2. Keep commits small and use conventional commit messages (`feat:`, `fix:`, `refactor:`, etc.)
 3. Don't commit `node_modules/`, release zips, or `.claude-hub-sessions.json`
-4. Test on Windows 10 and Windows 11 if possible
+4. Test on at least one of: Windows 10/11, macOS, or recent Linux distro
 
 ## License
 
