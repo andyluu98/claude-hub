@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Hub — Agent Teams</title>
+  <link rel="stylesheet" href="/xterm-css/xterm.css">
+  <style>
+    /* ── Reset & Base ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1e3e 50%, #0d1224 100%);
+      color: #e6edf3;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px;
+      background: rgba(13, 17, 38, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      z-index: 100;
+    }
+    .top-bar h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
+    .top-bar h1 span { color: #a78bfa; }
+    .top-bar-nav { display: flex; gap: 10px; align-items: center; }
+    .top-bar-nav a {
+      color: #8b949e; text-decoration: none; font-size: 13px;
+      padding: 5px 12px; border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .top-bar-nav a:hover { color: #e6edf3; background: rgba(255,255,255,0.06); }
+
+    .main-area {
+      display: flex; flex: 1; overflow: hidden; position: relative;
+    }
+    .right-area {
+      flex: 1; display: flex; overflow: hidden;
+    }
+
+    /* ── Lead Terminal ──────────────────────────────────────────── */
+    .lead-terminal-container {
+      width: 50%; min-width: 400px;
+      display: flex; flex-direction: column;
+      background: #0d1117;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .lead-terminal-container .xterm { height: 100%; }
+    .lead-terminal-container .xterm-viewport { overflow-y: auto !important; }
+    .terminal-placeholder {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%;
+      color: #484f58; text-align: center;
+    }
+    .terminal-placeholder h2 { font-size: 16px; margin-bottom: 8px; color: #8b949e; }
+    .terminal-placeholder p { font-size: 13px; max-width: 280px; line-height: 1.5; }
+
+    /* ── Graph Container ────────────────────────────────────────── */
+    .graph-container {
+      flex: 1; position: relative; overflow: hidden;
+    }
+    .graph-container canvas {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    }
+    #cards-layer {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    #cards-layer .agent-card { pointer-events: auto; }
+
+    /* ── Agent Cards ────────────────────────────────────────────── */
+    .agent-card {
+      position: absolute; width: 180px;
+      background: rgba(22, 27, 44, 0.78);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color 0.3s, transform 0.15s;
+      font-size: 12px;
+    }
+    .agent-card:hover {
+      border-color: rgba(255,255,255,0.18);
+      transform: translateY(-2px);
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 6px;
+    }
+    .card-name { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+    .card-desc { color: #8b949e; font-size: 11px; margin-bottom: 6px; line-height: 1.3; }
+    .card-task { font-size: 11px; color: #58a6ff; }
+    .card-task.idle-text { color: #484f58; }
+    .card-status { font-size: 11px; color: #8b949e; display: flex; align-items: center; gap: 4px; }
+
+    /* ── Badges ──────────────────────────────────────────────────── */
+    .badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
+      padding: 2px 7px; border-radius: 4px; text-transform: uppercase;
+    }
+    .badge-lead { background: rgba(167,139,250,0.2); color: #a78bfa; }
+    .badge-teammate { background: rgba(88,166,255,0.15); color: #58a6ff; }
+
+    /* ── Status Dots ────────────────────────────────────────────── */
+    .status-dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    }
+    .status-running { background: #3fb950; box-shadow: 0 0 6px #3fb950; animation: pulse-dot 1.5s infinite; }
+    .status-idle { background: #484f58; }
+    .status-error { background: #f85149; box-shadow: 0 0 6px #f85149; animation: pulse-dot 1s infinite; }
+    .status-stopped { background: #30363d; }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── Right Sidebar (Tasks) ──────────────────────────────────── */
+    .sidebar {
+      width: 280px; min-width: 280px;
+      background: rgba(13, 17, 38, 0.7);
+      backdrop-filter: blur(10px);
+      border-left: 1px solid rgba(255,255,255,0.06);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .panel-header h3 { font-size: 13px; font-weight: 600; }
+    .task-count { font-size: 11px; color: #484f58; }
+
+    .task-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+    .task-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      transition: background 0.2s;
+    }
+    .task-row:hover { background: rgba(255,255,255,0.03); }
+    .task-row.task-active { background: rgba(88,166,255,0.06); }
+    .task-row.task-completed { opacity: 0.45; }
+    .task-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+    .task-icon-pending { color: #484f58; }
+    .task-icon-in_progress { color: #58a6ff; }
+    .task-icon-completed { color: #3fb950; }
+    .task-info { min-width: 0; }
+    .task-title { font-size: 12px; font-weight: 500; line-height: 1.3; }
+    .task-completed .task-title { text-decoration: line-through; }
+    .task-owner { font-size: 10px; color: #484f58; margin-top: 2px; }
+
+    /* ── Bottom Panel (Messages) ────────────────────────────────── */
+    .bottom-panel {
+      height: 160px; min-height: 120px;
+      background: rgba(13, 17, 38, 0.7);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex; flex-direction: column;
+    }
+    .msg-list {
+      flex: 1; overflow-y: auto; padding: 4px 14px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 11px;
+    }
+    .msg-row {
+      display: flex; gap: 6px; padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+      animation: msg-fade-in 0.3s ease;
+    }
+    @keyframes msg-fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .msg-time { color: #484f58; flex-shrink: 0; }
+    .msg-from { font-weight: 600; flex-shrink: 0; }
+    .msg-arrow { color: #30363d; }
+    .msg-to { color: #8b949e; flex-shrink: 0; }
+    .msg-content { color: #c9d1d9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Control Bar ────────────────────────────────────────────── */
+    .control-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px;
+      background: rgba(13, 17, 38, 0.9);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 6px 14px; border: none; border-radius: 6px;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .btn-primary {
+      background: rgba(88,166,255,0.15); color: #58a6ff;
+      border: 1px solid rgba(88,166,255,0.3);
+    }
+    .btn-primary:hover { background: rgba(88,166,255,0.25); }
+    .btn-danger {
+      background: rgba(248,81,73,0.12); color: #f85149;
+      border: 1px solid rgba(248,81,73,0.3);
+    }
+    .btn-danger:hover { background: rgba(248,81,73,0.22); }
+    .btn-ghost {
+      background: transparent; color: #8b949e;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.06); color: #e6edf3; }
+    .btn-ghost.active { color: #58a6ff; border-color: rgba(88,166,255,0.3); }
+
+    .control-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.08); margin: 0 4px; }
+    .control-label { font-size: 11px; color: #484f58; }
+
+    /* ── Legend ──────────────────────────────────────────────────── */
+    .legend {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(13, 17, 38, 0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+      z-index: 10;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+    .legend-line {
+      width: 24px; height: 2px; border-radius: 1px;
+    }
+
+    /* ── Empty/Loading States ──────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%;
+      color: #484f58; text-align: center;
+    }
+    .empty-state h2 { font-size: 18px; margin-bottom: 8px; color: #8b949e; }
+    .empty-state p { font-size: 13px; max-width: 320px; line-height: 1.5; }
+
+    .loading-shimmer {
+      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Modal ──────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+      animation: fade-in 0.2s ease;
+    }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .modal-content {
+      background: rgba(22, 27, 44, 0.92);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 24px; min-width: 360px; max-width: 480px;
+    }
+    .modal-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+    }
+    .modal-header h2 { flex: 1; font-size: 16px; }
+    .modal-close {
+      background: none; border: none; color: #8b949e; font-size: 18px;
+      cursor: pointer; padding: 4px;
+    }
+    .modal-close:hover { color: #e6edf3; }
+    .modal-body { display: flex; flex-direction: column; gap: 10px; }
+    .modal-field { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+    .modal-field label { color: #484f58; min-width: 90px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .modal-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-action {
+      padding: 7px 18px; border: 1px solid rgba(88,166,255,0.3);
+      background: rgba(88,166,255,0.12); color: #58a6ff;
+      border-radius: 6px; font-size: 12px; cursor: pointer;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .btn-action:hover { background: rgba(88,166,255,0.22); }
+
+    /* ── Scrollbar ──────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 1200px) {
+      .main-area { flex-direction: column; }
+      .sidebar { width: 100%; min-width: 0; max-height: 200px; border-left: none; border-top: 1px solid rgba(255,255,255,0.06); }
+      .bottom-panel { height: 120px; min-height: 80px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <h1><span>Claude Hub</span> — Agent Teams</h1>
+      <div class="top-bar-nav">
+        <a href="/index.html">← Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Control Bar -->
+    <div class="control-bar">
+      <button class="btn btn-primary" id="btn-lead-start" onclick="startLead()">▶ Start Lead Agent</button>
+      <button class="btn btn-danger" id="btn-lead-stop" onclick="stopLead()" style="display:none">■ Stop Lead</button>
+      <span class="control-label" id="lead-status-text" style="margin-left:8px"></span>
+    </div>
+
+    <!-- Main Area -->
+    <div class="main-area">
+      <!-- Lead Terminal (left) -->
+      <div class="lead-terminal-container" id="lead-terminal">
+        <div class="terminal-placeholder" id="terminal-placeholder">
+          <h2>Lead Agent Terminal</h2>
+          <p>Click <strong>Start Lead</strong> to launch Claude Code</p>
+        </div>
+      </div>
+
+      <!-- Right side: Graph + Tasks -->
+      <div class="right-area">
+      <!-- Graph -->
+      <div class="graph-container" id="graph-container">
+        <canvas id="graph-canvas"></canvas>
+        <div id="cards-layer"></div>
+
+        <!-- Legend -->
+        <div class="legend">
+          <div class="legend-item">
+            <span class="legend-line" style="background:#58a6ff"></span>
+            <span>Parallel Execution</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-line" style="background:#3fb950"></span>
+            <span>Message Passing</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-line" style="background:#f85149"></span>
+            <span>Shared Context</span>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="empty-state">
+          <h2>Agent Overview</h2>
+          <p>Start the Lead Agent to see sub-agents appear here as they are spawned.</p>
+        </div>
+      </div>
+
+      <!-- Sidebar: Tasks -->
+      <div class="sidebar" id="task-panel"></div>
+      </div><!-- /right-area -->
+    </div>
+
+    <!-- Bottom: Messages -->
+    <div class="bottom-panel" id="msg-panel"></div>
+  </div>
+
+  <!-- JS modules -->
+  <script src="/xterm/xterm.js"></script>
+  <script src="/xterm-fit/xterm-addon-fit.js"></script>
+  <script src="/js/agent-team-canvas.js"></script>
+  <script src="/js/agent-team-cards.js"></script>
+  <script src="/js/agent-team-tasks.js"></script>
+  <script src="/js/agent-team-terminal.js"></script>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────────
+    let state = { agents: [], tasks: [], messages: [] };
+    let agentMap = {};
+    let graph, cards, taskPanel, msgTimeline;
+    let ws = null;
+    let leadTerminal = null;
+    let leadRunning = false;
+
+    // ── Init ──────────────────────────────────────────────────────
+    function init() {
+      const canvas = document.getElementById('graph-canvas');
+      graph = new GraphRenderer(canvas, state);
+      cards = new CardManager(document.getElementById('cards-layer'), graph);
+      taskPanel = new TaskPanel(document.getElementById('task-panel'), agentMap);
+      msgTimeline = new MessageTimeline(document.getElementById('msg-panel'), agentMap, graph);
+
+      fetch('/api/lead/status').then(r => r.json()).then(d => {
+        if (d.status === 'running' && d.sessionId) {
+          leadRunning = true;
+          updateLeadButtons();
+          initTerminal(d.sessionId);
+          startTracking();
+        }
+      }).catch(() => {});
+
+      graph.startAnimation();
+      connectWs();
+    }
+
+    function updateEmptyState() {
+      const el = document.getElementById('empty-state');
+      if (el) el.style.display = state.agents.length > 0 ? 'none' : 'flex';
+    }
+
+    function connectWs() {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}/agent-team`);
+      ws.onmessage = (e) => { try { handleEvent(JSON.parse(e.data)); } catch (_) {} };
+      ws.onclose = () => setTimeout(connectWs, 3000);
+    }
+
+    function handleEvent(evt) {
+      switch (evt.type) {
+        case 'agent-team:init': applyState(evt.team); break;
+        case 'agent-team:agent-update': {
+          const a = evt.agent;
+          let existing = state.agents.find(x => x.id === a.id);
+          if (existing) {
+            const px = existing._x, py = existing._y;
+            Object.assign(existing, a);
+            if (px !== undefined) { existing._x = px; existing._y = py; }
+          } else {
+            state.agents.push(a); existing = a;
+            graph.layoutNodes(); cards.createCard(a);
+          }
+          agentMap[a.id] = existing;
+          cards.updateCard(existing);
+          updateEmptyState();
+          break;
+        }
+        case 'agent-team:task-created': state.tasks.push(evt.task); taskPanel.render(state.tasks); break;
+        case 'agent-team:task-updated': {
+          const idx = state.tasks.findIndex(t => t.id === evt.task.id);
+          if (idx >= 0) Object.assign(state.tasks[idx], evt.task);
+          taskPanel.render(state.tasks); break;
+        }
+        case 'agent-team:message': state.messages.push(evt.message); msgTimeline.append(evt.message); break;
+      }
+    }
+
+    function applyState(data) {
+      state.agents = data.agents || []; state.tasks = data.tasks || []; state.messages = data.messages || [];
+      agentMap = {}; state.agents.forEach(a => { agentMap[a.id] = a; });
+      taskPanel.agentMap = agentMap; msgTimeline.agentMap = agentMap;
+      graph.layoutNodes(); cards.renderAll(state.agents); taskPanel.render(state.tasks);
+      const listEl = msgTimeline.listEl; if (listEl) listEl.innerHTML = '';
+      state.messages.forEach(m => msgTimeline.append(m));
+      updateEmptyState();
+    }
+
+    // ── Lead Terminal ────────────────────────────────────────────
+    function initTerminal(sessionId) {
+      const container = document.getElementById('lead-terminal');
+      const ph = document.getElementById('terminal-placeholder');
+      if (ph) ph.style.display = 'none';
+      if (!leadTerminal) leadTerminal = new LeadTerminal(container);
+      leadTerminal.connect(sessionId);
+      leadTerminal.focus();
+    }
+
+    function startLead() {
+      fetch('/api/lead/start', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+      }).then(r => r.json()).then(data => {
+        if (data.sessionId) {
+          leadRunning = true; updateLeadButtons();
+          initTerminal(data.sessionId); startTracking();
+        }
+      });
+    }
+
+    function stopLead() {
+      fetch('/api/lead/stop', { method: 'POST' }).then(() => {
+        leadRunning = false; updateLeadButtons();
+        if (leadTerminal) leadTerminal.disconnect();
+        stopTracking();
+      });
+    }
+
+    function updateLeadButtons() {
+      document.getElementById('btn-lead-start').style.display = leadRunning ? 'none' : '';
+      document.getElementById('btn-lead-stop').style.display = leadRunning ? '' : 'none';
+      document.getElementById('lead-status-text').textContent = leadRunning ? 'Tracking sub-agents...' : '';
+    }
+
+    function startTracking() { fetch('/api/agent-team/real/start', { method: 'POST' }).catch(() => {}); }
+    function stopTracking() { fetch('/api/agent-team/real/stop', { method: 'POST' }).catch(() => {}); }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { const m = document.querySelector('.modal-overlay'); if (m) m.remove(); }
+    });
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    // (old code removed)
+  </script>
+</body>
+</html>

@@ -17,39 +17,47 @@ function existsExec(p) {
   try { return fs.existsSync(p); } catch(_) { return false; }
 }
 
-function findClaudeBinary() {
+function findEngineBinary(engine) {
   const home = homeDir();
-  const cands = IS_WINDOWS
-    ? [
-        path.join(home, '.local', 'bin', 'claude.exe'),
-        path.join(home, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
-        'claude.exe',
-        'claude.cmd',
-        'claude',
-      ]
-    : IS_MAC
-      ? [
-          path.join(home, '.local', 'bin', 'claude'),
-          path.join(home, '.claude', 'local', 'claude'),
-          '/usr/local/bin/claude',
-          '/opt/homebrew/bin/claude',
-          'claude',
-        ]
-      : [
-          path.join(home, '.local', 'bin', 'claude'),
-          path.join(home, '.claude', 'local', 'claude'),
-          '/usr/local/bin/claude',
-          '/usr/bin/claude',
-          'claude',
-        ];
+  const engineName = String(engine || 'claude').trim().toLowerCase();
+  const allowed = new Set(['claude', 'gemini', 'codex']);
+  if (!allowed.has(engineName)) return null;
+  const name = engineName;
+  
+  const names = IS_WINDOWS ? [`${name}.cmd`, `${name}.exe`, name] : [name];
+  
+  const cands = [];
+  if (IS_WINDOWS) {
+    const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+    const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+    
+    names.forEach(n => {
+      cands.push(path.join(home, '.local', 'bin', n));
+      cands.push(path.join(appData, 'npm', n));
+      cands.push(path.join(localAppData, 'Programs', 'Python', 'Python310', 'Scripts', n)); // example for pip
+      cands.push(n); // bare name for PATH
+    });
+  } else {
+    cands.push(path.join(home, '.local', 'bin', name));
+    cands.push(path.join(home, `.${name}`, 'local', name));
+    cands.push(`/usr/local/bin/${name}`);
+    cands.push(`/opt/homebrew/bin/${name}`);
+    cands.push(`/usr/bin/${name}`);
+    cands.push(name);
+  }
+
   for (const c of cands) {
     if (path.isAbsolute(c)) {
-      if (existsExec(c)) return c;
+      if (existsExec(c)) {
+        console.log(`🔍 findEngineBinary(${engine}) found absolute: ${c}`);
+        return c;
+      }
     } else {
-      // bare name → trust PATH; spawn with shell:true will resolve
+      console.log(`🔍 findEngineBinary(${engine}) returning bare name: ${c}`);
       return c;
     }
   }
+  console.warn(`🔍 findEngineBinary(${engine}) found nothing!`);
   return null;
 }
 
@@ -191,7 +199,8 @@ function linuxTrash(p, cb) {
 module.exports = {
   IS_WINDOWS, IS_MAC, IS_LINUX,
   homeDir,
-  findClaudeBinary,
+  findEngineBinary,
+  findClaudeBinary: () => findEngineBinary('claude'),
   openFileWithDefault,
   revealInFileManager,
   openFolder,

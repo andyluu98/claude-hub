@@ -24,6 +24,12 @@ catch(e) { console.error('\n❌  Missing node-pty. Run: npm install\n'); process
 const PORT = 8765;
 const HOST = '127.0.0.1'; // Loopback only — see SECURITY in README
 const HIDDEN_DIRS = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.cache', '.vscode', '.idea']);
+const ENGINES = new Set(['claude', 'gemini', 'codex']);
+
+function normalizeEngine(value) {
+  const engine = String(value || '').trim().toLowerCase();
+  return ENGINES.has(engine) ? engine : 'claude';
+}
 
 // Allowed Origin / Referer prefixes for CSRF protection.
 // Only requests from the dashboard page itself are accepted on /api/* and WS upgrade.
@@ -54,6 +60,7 @@ class Session {
     this.name       = name;
     this.cwd        = cwd || platform.homeDir();
     this.autoAccept = !!autoAccept;
+    this.engine     = normalizeEngine(opts.engine || opts.cliType);
     this.status     = opts.status || 'stopped'; // running | stopped
     this.lane       = opts.lane || 'active';    // active | pending | done
     this.startedAt  = opts.startedAt || new Date().toLocaleTimeString('en-US');
@@ -73,6 +80,7 @@ class Session {
       id: this.id, name: this.name, status: this.status, lane: this.lane,
       startedAt: this.startedAt, cwd: this.cwd,
       cwdShort: path.basename(this.cwd), autoAccept: this.autoAccept,
+      engine: this.engine,
     };
   }
 }
@@ -106,6 +114,8 @@ const SESSIONS_FILE = path.join(__dirname, '.claude-hub-sessions.json');
 function serializeSessions() {
   return [...sessions.values()].map(s => ({
     id: s.id, name: s.name, cwd: s.cwd, autoAccept: s.autoAccept,
+    engine: normalizeEngine(s.engine || s.cliType),
+    cliType: normalizeEngine(s.engine || s.cliType),
     status: s.status === 'running' ? 'running' : 'stopped',
     lane: s.lane || 'active',
     startedAt: s.startedAt,
@@ -130,6 +140,7 @@ function loadPersistedSessions() {
     const arr = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
     for (const o of arr) {
       const s = new Session(o.id, o.name, o.cwd, o.autoAccept, {
+        engine: normalizeEngine(o.engine || o.cliType),
         status: 'stopped', // always start in stopped state, wait for user to Resume
         lane: o.lane || 'active',
         startedAt: o.startedAt,
@@ -149,21 +160,28 @@ function startPty(s, opts) {
   try { if (!fs.existsSync(workCwd) || !fs.statSync(workCwd).isDirectory()) throw 0; }
   catch { workCwd = platform.homeDir(); s.cwd = workCwd; }
 
-  // Find claude binary (cross-platform)
-  const claudeBin = platform.findClaudeBinary();
-  if (!claudeBin) {
-    console.error('Cannot find Claude Code CLI. Install from https://claude.com/claude-code, then ensure `claude` (Win: claude.exe) is on PATH.');
+  // Find engine binary (cross-platform)
+  const engineBin = platform.findEngineBinary(s.engine);
+  console.log(`🚀 [${s.id}] Starting ${s.engine} using binary: ${engineBin} in ${workCwd}`);
+
+  if (!engineBin) {
+    console.error(`Cannot find ${s.engine} binary. Install it and ensure it is on PATH.`);
     s.status = 'stopped';
     pushSession(s);
     return;
   }
 
   const args = [];
-  if (opts.resume) args.push('--continue'); // resume most recent conversation in cwd
-  if (s.autoAccept) args.push('--dangerously-skip-permissions');
+  if (s.engine === 'claude') {
+    if (opts.resume) args.push('--continue'); // resume most recent conversation in cwd
+    if (s.autoAccept) args.push('--dangerously-skip-permissions');
+  } else if (s.engine === 'gemini') {
+    // Gemini CLI specific args if needed
+  }
+
   let spawned = false;
   try {
-    s.proc = pty.spawn(claudeBin, args, {
+    s.proc = pty.spawn(engineBin, args, {
       name: 'xterm-256color',
       cols: 120, rows: 30,
       cwd: workCwd,
@@ -172,7 +190,7 @@ function startPty(s, opts) {
     spawned = true;
   } catch (_) {}
   if (!spawned) {
-    console.error('Failed to spawn Claude Code CLI: ' + claudeBin);
+    console.error(`Failed to spawn ${s.engine} binary: ` + engineBin);
     s.status = 'stopped';
     pushSession(s);
     return;
@@ -235,22 +253,6 @@ function listDrives() {
     catch(_) {}
   }
   return { cwd: 'Drives', parent: null, items: drives };
-}
-
-// ── Overseer rule-based summary ────────────────────────────────────
-function buildRuleSummary() {
-  const arr = [...sessions.values()];
-  if (!arr.length) return 'Chua co session nao.';
-  const c = { running:0, stopped:0 };
-  arr.forEach(s => c[s.status] = (c[s.status]||0) + 1);
-  const header = `📊 ${arr.length} sessions · 🟢 ${c.running} running · ⏸ ${c.stopped} stopped`;
-  const lines = arr.map(s => {
-    const icon = { running:'🟢', stopped:'⏸' }[s.status] || '⚪';
-    const folder = path.basename(s.cwd);
-    const auto = s.autoAccept ? ' ⚡' : '';
-    return `${icon} [${s.name}]${auto} (${folder}) — ${s.status}`;
-  });
-  return [header, '─'.repeat(40), ...lines].join('\n');
 }
 
 // ── Express + WS ───────────────────────────────────────────────────
@@ -337,10 +339,13 @@ app.post('/api/sessions', (req, res) => {
   let name        = (req.body.name || '').trim();
   const cwd       = (req.body.cwd  || '').trim();
   const autoAccept = !!req.body.autoAccept;
+  const engine     = normalizeEngine(req.body.engine || req.body.cliType);
+  console.log(`➕ Creating session: engine=${engine}, name=${name}, cwd=${cwd}`);
   // Auto-name tu folder basename neu user khong nhap
   if (!name) name = cwd ? path.basename(cwd) : 'Session';
   const id = uuid().slice(0, 8);
-  const s  = new Session(id, name, cwd, autoAccept);
+  const s  = new Session(id, name, cwd, autoAccept, { engine });
+  console.log(`✅ Session created with engine: ${s.engine}`);
   sessions.set(id, s);
   if (cwd) saveRecent(cwd);
   startPty(s);
@@ -566,11 +571,6 @@ app.post('/api/open', (req, res) => {
   }
 });
 
-app.get('/api/overseer', (_, res) => res.json({ rule: buildRuleSummary() }));
-
-// Broadcast overseer rule every 3s
-setInterval(() => broadcast({ type: 'overseer_rule', rule: buildRuleSummary() }), 3000);
-
 // ── WebSocket routing ──────────────────────────────────────────────
 server.on('upgrade', (req, socket, head) => {
   // Reject cross-origin WebSocket hijacks. Browsers always send Origin on
@@ -622,7 +622,6 @@ server.on('upgrade', (req, socket, head) => {
     ws.send(JSON.stringify({
       type: 'init',
       sessions: [...sessions.values()].map(s => s.toJSON()),
-      overseer: { rule: buildRuleSummary() },
     }));
     ws.on('close', () => clients.delete(ws));
   });

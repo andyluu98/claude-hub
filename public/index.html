@@ -53,7 +53,6 @@
 [data-theme="light"] .pane-head .nm-input { background:#fff; color:var(--text); }
 [data-theme="light"] .pane-head button:hover { background:rgba(0,0,0,.07); color:var(--text); }
 [data-theme="light"] .pane-head button[data-remove]:hover { color:var(--red); background:rgba(248,81,73,.1); }
-[data-theme="light"] #overseer-pane { background:linear-gradient(180deg, rgba(163,113,247,.07), rgba(220,225,232,.8)); border-bottom-color:rgba(163,113,247,.25); }
 [data-theme="light"] #sidebar .sb-nav button { background:rgba(0,0,0,.05); border-color:var(--border); color:var(--text-dim); }
 [data-theme="light"] #sidebar .sb-nav button:hover { background:rgba(88,166,255,.08); }
 [data-theme="light"] #sidebar .sb-row:hover { background:rgba(0,0,0,.05); color:var(--text); }
@@ -391,7 +390,14 @@ header h1 span { color:var(--muted); font-weight:400; font-size:11px; -webkit-te
   border-radius:4px; transition:all .12s;
 }
 .pane-head button:hover { color:var(--text); background:rgba(255,255,255,.08); }
-.pane-head button[data-remove]:hover { color:var(--red); background:rgba(248,81,73,.12); }
+.pane-head button[data-remove] {
+  color:var(--red); background:rgba(248,81,73,.15);
+  font-weight:bold; font-size:18px; padding:2px 12px;
+  margin-right:10px; border-radius:6px;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:34px; height:26px;
+}
+.pane-head button[data-remove]:hover { background:rgba(248,81,73,.25); color:#fff; }
 .pane-body { flex:1; padding:6px; overflow:hidden; min-height:0; background:#000; position:relative; }
 .pane { container-type: inline-size; container-name: pane; }
 .pane-body .xterm-wrap { width:100%; height:100%; }
@@ -663,94 +669,54 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
 <body>
 
 <header>
-  <h1>&#x1F916; Claude Hub <span id="hdr-count">0 sessions</span></h1>
+  <h1>&#x1F916; Claude Hub <span id="hdr-count" style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px">0 sessions</span></h1>
   <div id="tab-bar">
     <button data-tab="active"  class="active">&#x1F525; Active <span class="cnt" id="cnt-active">0</span></button>
     <button data-tab="pending">&#x23F8; Pending <span class="cnt" id="cnt-pending">0</span></button>
     <button data-tab="done">&#x2705; Done <span class="cnt" id="cnt-done">0</span></button>
   </div>
   <div style="flex:1"></div>
-  <button id="btn-theme" title="Toggle light/dark theme" onclick="applyTheme()">&#x2600;</button>
-  <div id="ws-badge">&#x25CF; ...</div>
-</header>
-
-<div id="folder-pop"></div>
-<div id="ctx-menu"></div>
-
-<div id="bar">
-  <input id="inp-name" type="text" placeholder="Task name (optional)...">
-  <button id="btn-cwd">&#x1F4C1; (home)</button>
-  <label class="chk"><input type="checkbox" id="chk-auto" checked> &#x26A1; Auto-accept</label>
-  <div style="position:relative;display:inline-flex">
-    <button class="btn btn-primary" onclick="newSession()" style="border-radius:7px 0 0 7px;border-right:1px solid rgba(255,255,255,.2)">+ New Session</button>
-    <button class="btn btn-primary" id="btn-tmpl-arrow" onclick="toggleTemplatePanel()" title="Session templates" style="border-radius:0 7px 7px 0;padding:5px 9px;font-size:11px">&#x25BE;</button>
-    <div id="template-panel">
-      <div id="template-list"></div>
-      <div class="tmpl-sep"></div>
-      <div class="tmpl-action" onclick="saveTemplate()">&#xFF0B; Save current as template</div>
+  <div id="controls" style="display:flex;align-items:center;gap:8px">
+    <input id="inp-name" type="text" placeholder="Session name..." style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;outline:none;width:120px">
+    <button id="btn-cwd" class="btn btn-ghost" style="padding:5px 10px;font-size:12px" title="Choose working directory">&#x1F4C1; (home)</button>
+    <label class="chk"><input type="checkbox" id="chk-auto" checked> &#x26A1; Auto-accept</label>
+    <select id="sel-engine" title="Select AI Engine" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;outline:none;cursor:pointer">
+      <option value="claude">Claude</option>
+      <option value="gemini">Gemini</option>
+      <option value="codex">Codex</option>
+    </select>
+    <button class="btn btn-primary" onclick="newSession()">+ New Session</button>
+    <button class="btn btn-primary" onclick="resumeAll()" title="Restart all stopped sessions">&#x25B6; Resume All</button>
+    <button class="btn btn-ghost" onclick="killAll()">Stop All</button>
+    <button class="btn btn-ghost" onclick="resetLayout()" title="Auto-rearrange sessions">&#x1F6F0; Auto-layout</button>
+    <div style="display:flex;align-items:center;gap:3px;margin-left:4px">
+      <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;font-weight:700" onclick="changeFontSize(-1)">A−</button>
+      <span id="btn-font-size" style="font-size:11px;color:var(--muted);min-width:28px;text-align:center"></span>
+      <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;font-weight:700" onclick="changeFontSize(1)">A+</button>
     </div>
+    <button class="btn btn-ghost" id="btn-notify" onclick="toggleNotifications()">&#x1F514;</button>
   </div>
-  <button class="btn btn-primary" onclick="resumeAll()" title="Restart all stopped sessions">&#x25B6; Resume All</button>
-  <button class="btn btn-ghost" onclick="killAll()">Stop All</button>
-  <div style="display:flex;align-items:center;gap:3px;margin-left:4px">
-    <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;font-weight:700" onclick="changeFontSize(-1)" title="Decrease font size">A−</button>
-    <span id="btn-font-size" style="font-size:11px;color:var(--muted);min-width:28px;text-align:center"></span>
-    <button class="btn btn-ghost" style="padding:5px 8px;font-size:11px;font-weight:700" onclick="changeFontSize(1)" title="Increase font size">A+</button>
-  </div>
-  <div class="filter-wrap">
-    <input id="inp-filter" type="text" placeholder="Filter sessions..." autocomplete="off">
-  </div>
-  <button class="btn btn-ghost" id="btn-sidebar-main" onclick="toggleSidebar()" title="Show/hide files">&#x1F4C1; Files</button>
-  <button class="btn btn-ghost" id="btn-notify" onclick="toggleNotifications()" title="Notifications off">&#x1F514;</button>
-  <button class="btn btn-ghost" id="btn-broadcast" onclick="toggleBroadcast()" title="Send command to all running sessions">&#x21F6; Broadcast</button>
-  <div style="position:relative">
-    <button class="btn btn-ghost" id="btn-presets" onclick="togglePresetPanel()" title="Layout presets">&#x1F4CB; Layouts</button>
-    <div id="preset-panel">
-      <div class="preset-title">Saved Layouts</div>
-      <div id="preset-list"></div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px;font-size:12px" onclick="savePreset()">+ Save current layout</button>
-    </div>
-  </div>
-  <div style="flex:1"></div>
-  <button class="btn btn-purple" onclick="toggleOverseer()">&#x1F9E0; Overseer</button>
-</div>
-
-<div id="broadcast-bar" style="display:none;align-items:center;gap:8px;padding:6px 18px;background:linear-gradient(90deg,rgba(227,179,65,.08),rgba(227,179,65,.04));border-bottom:1px solid rgba(227,179,65,.25);flex-shrink:0">
-  <span style="font-size:12px;color:var(--orange);font-weight:600;white-space:nowrap">&#x21F6; Broadcast:</span>
-  <input id="inp-broadcast" type="text" placeholder="Command to send to all running sessions... (Enter to send, Esc to cancel)" style="flex:1;background:rgba(13,17,23,.5);border:1px solid rgba(227,179,65,.3);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12.5px;outline:none;font-family:inherit">
-  <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="toggleBroadcast()">&#x2715;</button>
-</div>
-<div id="main">
-  <div id="overseer-pane">
-    <h3>&#x1F9E0; Overseer <span class="count" id="overseer-time"></span></h3>
-    <div id="overseer-rule">Loading...</div>
-  </div>
+  <button id="btn-theme" title="Toggle light/dark theme" onclick="applyTheme()" style="margin-left:8px">&#x2600;</button>
+  <div id="ws-badge" style="margin-left:8px">&#x25CF; ...</div>
+  </header>
+  <div id="main">
   <div id="workspace">
-    <aside id="sidebar">
-      <div class="sb-toggle" onclick="toggleSidebar()" title="Toggle sidebar">&#x2630;</div>
+    <aside id="sidebar" class="collapsed">
+      <div class="sb-toggle" onclick="toggleSidebar()" title="Toggle file explorer">&#x1F4C1;</div>
       <div class="sb-inner">
         <div class="sb-header">
-          <span class="sb-title">&#x1F4C1; Explorer</span>
-          <button onclick="sbRefresh()" title="Refresh" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px">&#x27F3;</button>
+          <span class="sb-title">Explorer</span>
+          <button onclick="sbRefresh()" title="Refresh">&#x27F3;</button>
         </div>
-        <div class="sb-nav" id="sb-nav">
-          <button id="sb-back" onclick="sbGoBack()" title="Back (Alt+Left)" disabled>&#x2190;</button>
-          <button id="sb-fwd" onclick="sbGoForward()" title="Forward (Alt+Right)" disabled>&#x2192;</button>
+        <div class="sb-nav">
+          <button id="sb-back" onclick="sbGoBack()" title="Back">&#x2190;</button>
+          <button id="sb-fwd" onclick="sbGoForward()" title="Forward">&#x2192;</button>
           <button onclick="sbGoHome()" title="Home">&#x1F3E0;</button>
-          <button onclick="sbBrowse('Drives')" title="Drives">&#x1F4BF;</button>
           <div class="sb-addr">
-            <input id="sb-path-input" placeholder="Path..." onkeydown="if(event.key==='Enter'){sbBrowse(this.value.trim());this.blur();}" onfocus="this.select()" />
-            <div class="sb-crumb" id="sb-crumb"></div>
+            <input id="sb-path-input" placeholder="Path..." onkeydown="if(event.key==='Enter'){sbBrowse(this.value.trim());this.blur();}" />
           </div>
         </div>
-        <div class="sb-list" id="sb-list">
-          <div class="sb-empty">No session selected</div>
-        </div>
-        <div class="drop-overlay" id="sb-drop-overlay"><span class="drop-label">&#x1F4CE; Drop files here to attach</span></div>
-        <div class="sb-selected" id="sb-selected" style="display:none">
-          <div class="sb-sel-label">&#x1F4CE; Attached:</div>
-          <div id="sb-sel-items"></div>
-        </div>
+        <div class="sb-list" id="sb-list"></div>
       </div>
       <div class="sb-resize-handle" id="sb-resize-handle"></div>
     </aside>
@@ -759,8 +725,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
       <div id="empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center">
         <div>
           <h2 style="color:var(--text);margin-bottom:6px;font-size:18px">No sessions yet</h2>
-          <p>Pick a project folder and click "+ New Session"</p>
-          <p style="font-size:11px;margin-top:12px;color:var(--muted)">Tip: use &#x229E;/&#x229F; on any pane header to split right/down · Click pane to show file explorer in sidebar</p>
+          <p>Click "+ New Session" to start</p>
         </div>
       </div>
     </div>
@@ -1119,7 +1084,6 @@ function connectCtrl() {
     if (msg.type === 'init') {
       msg.sessions.forEach(function(s) { state[s.id] = s; prevStatus[s.id] = s.status; });
       rebuildGrid();
-      if (msg.overseer) document.getElementById('overseer-rule').textContent = msg.overseer.rule;
     } else if (msg.type === 'session_created') {
       state[msg.session.id] = msg.session;
       prevStatus[msg.session.id] = msg.session.status;
@@ -1137,9 +1101,6 @@ function connectCtrl() {
       delete state[msg.id];
       delete prevStatus[msg.id];
       removePane(msg.id);
-    } else if (msg.type === 'overseer_rule') {
-      document.getElementById('overseer-rule').textContent = msg.rule;
-      document.getElementById('overseer-time').textContent = new Date().toLocaleTimeString('en-US');
     }
     document.getElementById('hdr-count').textContent = Object.keys(state).length + ' sessions';
     try { updateTabCounts(); } catch(_){}
@@ -1241,31 +1202,15 @@ function createPaneElement(s) {
     '<div class="pane-head">' +
       '<span class="dot ' + s.status + '" data-color-dot="' + s.id + '" title="Click to set color label"></span>' +
       '<span class="nm">' + esc(s.name) + '</span>' +
+      (s.engine === 'gemini' ? '<span style="font-size:9px;background:rgba(88,166,255,.2);color:var(--blue);border:1px solid rgba(88,166,255,.3);padding:1px 4px;border-radius:4px;margin-left:4px;font-weight:700">GEMINI</span>' : '') +
+      (s.engine === 'codex' ? '<span style="font-size:9px;background:rgba(63,185,80,.2);color:var(--green);border:1px solid rgba(63,185,80,.3);padding:1px 4px;border-radius:4px;margin-left:4px;font-weight:700">CODEX</span>' : '') +
       (s.autoAccept ? '<span class="auto">AUTO</span>' : '') +
-      '<span class="tag-area" data-tag-area="' + s.id + '"></span>' +
       '<span class="folder">' + esc(s.cwdShort || '?') + '</span>' +
-      '<span class="lane-btns">' +
-        '<button title="Move to Active"  data-lane-set="active"  data-sid="' + s.id + '" class="' + (lane==='active'?'on':'') + '">A</button>' +
-        '<button title="Move to Pending" data-lane-set="pending" data-sid="' + s.id + '" class="' + (lane==='pending'?'on':'') + '">P</button>' +
-        '<button title="Move to Done"    data-lane-set="done"    data-sid="' + s.id + '" class="' + (lane==='done'?'on':'') + '">D</button>' +
-      '</span>' +
+      '<div style="flex:1"></div>' +
       '<button title="Zoom / unzoom" data-zoom="' + s.id + '"></button>' +
-      '<button title="Split right" data-split-h="' + s.id + '">&#x229E;</button>' +
-      '<button title="Split down"  data-split-v="' + s.id + '">&#x229F;</button>' +
-      '<button title="Session note" data-note="' + s.id + '" style="' + (sessionNotes[s.id] ? 'color:var(--orange)' : '') + '">&#x270F;</button>' +
-      '<button title="Open folder" data-folder="' + s.id + '">&#x1F4C1;</button>' +
-      '<button title="Export terminal output" data-export="' + s.id + '">&#x1F4BE;</button>' +
       '<button title="Resume" data-resume="' + s.id + '">&#x25B6;</button>' +
-      '<button title="Stop (keep session)" data-kill="' + s.id + '">&#x25A0;</button>' +
-      '<button title="Delete permanently" data-remove="' + s.id + '">&times;</button>' +
-    '</div>' +
-    '<div class="search-bar" id="search-bar-' + s.id + '">' +
-      '<input type="text" id="search-inp-' + s.id + '" placeholder="Search..." autocomplete="off" spellcheck="false">' +
-      '<span class="sb-count" id="search-count-' + s.id + '"></span>' +
-      '<button id="search-case-' + s.id + '" title="Case sensitive (Alt+C)">Aa</button>' +
-      '<button onclick="searchPrev(\'' + s.id + '\')" title="Previous (Shift+Enter)">▲</button>' +
-      '<button onclick="searchNext(\'' + s.id + '\')" title="Next (Enter)">▼</button>' +
-      '<button onclick="closeSearchBar(\'' + s.id + '\')" title="Close (Esc)">✕</button>' +
+      '<button title="Stop" data-kill="' + s.id + '">&#x25A0;</button>' +
+      '<button title="Delete" data-remove="' + s.id + '" style="font-weight:bold;font-size:22px;color:var(--red);padding:0 12px;margin-right:15px;background:rgba(248,81,73,.15);border-radius:6px;min-width:36px;display:inline-flex;align-items:center;justify-content:center;height:28px">&times;</button>' +
     '</div>' +
     '<div class="pane-body"><div class="xterm-wrap" id="term-' + s.id + '"></div></div>';
 
@@ -1370,6 +1315,9 @@ function createPaneElement(s) {
   });
 
   var termEl = el.querySelector('.xterm-wrap');
+  el.addEventListener('mousedown', function() {
+    if (activeSid !== s.id) setActiveSession(s.id);
+  });
   termEl.addEventListener('contextmenu', function(ev) { ev.preventDefault(); pasteFromClipboard(panes[s.id] && panes[s.id].ws, s.id); });
   termEl.addEventListener('auxclick', function(ev) { if (ev.button !== 1) return; ev.preventDefault(); pasteFromClipboard(panes[s.id] && panes[s.id].ws, s.id); });
   termEl.addEventListener('dragover', function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
@@ -1530,8 +1478,7 @@ function hideEmpty() { var e = document.getElementById('empty'); if (e) e.remove
 function focusPane(sid) {
   var p = panes[sid];
   if (!p) return;
-  document.querySelectorAll('.pane.active').forEach(function(x) { x.classList.remove('active'); });
-  p.el.classList.add('active');
+  setActiveSession(sid);
   try { p.term.focus(); } catch(_){}
 }
 
@@ -2348,11 +2295,6 @@ function reconnectTerm(sid) {
   p.ws = newWs;
 }
 
-function toggleOverseer() {
-  document.getElementById('overseer-pane').classList.toggle('collapsed');
-  setTimeout(function() { fitSubtree(layoutTrees[currentTab]); }, 120);
-}
-
 // ── Folder picker ────────────────────────────────────────────────
 document.getElementById('btn-cwd').addEventListener('click', openModal);
 function openModal() {
@@ -2490,21 +2432,61 @@ function deleteBookmark(e, id) {
 
 // ── Actions ───────────────────────────────────────────────────────
 function newSession() {
-  var name = document.getElementById('inp-name').value.trim();
+  var nameEl = document.getElementById('inp-name');
+  var name = nameEl ? nameEl.value.trim() : '';
   var autoAccept = document.getElementById('chk-auto').checked;
-  // Safety: clear pendingSplitTarget if session_created never arrives
-  if (pendingSplitTarget) {
-    var savedTarget = pendingSplitTarget;
-    setTimeout(function() {
-      if (pendingSplitTarget === savedTarget) pendingSplitTarget = null;
-    }, 5000);
-  }
+  var engine = document.getElementById('sel-engine').value;
+  
+  // selectedCwd might be empty, server will handle default home dir
   fetch('/api/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: name, cwd: selectedCwd, autoAccept: autoAccept }),
-  });
-  document.getElementById('inp-name').value = '';
+    body: JSON.stringify({ name: name, cwd: selectedCwd, autoAccept: autoAccept, engine: engine }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(s) {
+    if (s.id) toast('Created ' + (s.engine||'session'));
+    else toast('Error creating session');
+  })
+  .catch(function(e) { toast('Error: ' + e.message); });
+
+  if (nameEl) nameEl.value = '';
+}
+
+function buildBalancedTree(sids, dir) {
+  if (sids.length === 0) return null;
+  if (sids.length === 1) return { type: 'leaf', sessionId: sids[0] };
+  var mid = Math.floor(sids.length / 2);
+  var nextDir = dir === 'h' ? 'v' : 'h';
+  return {
+    type: 'split',
+    dir: dir,
+    ratio: 0.5,
+    children: [
+      buildBalancedTree(sids.slice(0, mid), nextDir),
+      buildBalancedTree(sids.slice(mid), nextDir)
+    ]
+  };
+}
+
+function resetLayout() {
+  var lane = currentTab;
+  var sids = Object.values(state)
+    .filter(function(s) { return (s.lane || 'active') === lane; })
+    .map(function(s) { return s.id; });
+  
+  if (sids.length === 0) {
+    layoutTrees[lane] = null;
+  } else {
+    sids.sort();
+    layoutTrees[lane] = buildBalancedTree(sids, 'h');
+  }
+  saveLayoutTree(lane, layoutTrees[lane]);
+  rebuildCanvas();
+  setTimeout(function() {
+    fitSubtree(layoutTrees[lane]);
+  }, 100);
+  toast('Layout reset to grid');
 }
 
 function killAll() {
@@ -2523,56 +2505,21 @@ function resumeAll() {
 // ── Sidebar File Explorer ─────────────────────────────────────────
 var activeSid = null;          // currently focused session
 var sbCurrentPath = null;      // path currently browsing in sidebar
-var sbSelected = {};           // { sid: { relPathOrAbs: true } } — track checkboxes
-var sbInsertLen = {};          // { sid: { key: numChars } } — to uncheck and remove correct chars
-var sbHistory = [];            // navigation history stack
-var sbHistoryIdx = -1;         // current position in history
-var sbNavigating = false;      // flag to prevent push during back/forward
-
-function setActiveSession(sid) {
-  if (!sid || !state[sid]) return;
-  activeSid = sid;
-  // Highlight pane active
-  document.querySelectorAll('.pane').forEach(function(el) { el.classList.remove('active-pane'); });
-  var p = panes[sid];
-  if (p) p.el.classList.add('active-pane');
-  // Load sidebar
-  var s = state[sid];
-  sbBrowse(s.cwd);
-  renderSbSelected();
-}
-
-function updateSidebarBtn() {
-  var btn = document.getElementById('btn-sidebar-main');
-  if (!btn) return;
-  var collapsed = document.getElementById('sidebar').classList.contains('collapsed');
-  btn.style.color = collapsed ? '' : 'var(--orange)';
-  btn.title = collapsed ? 'Show files' : 'Hide files';
-}
+var sbSelected = {};           // { sid: { relPathOrAbs: true } }
+var sbInsertLen = {};
+var sbHistory = [];
+var sbHistoryIdx = -1;
+var sbNavigating = false;
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('collapsed');
-  updateSidebarBtn();
   setTimeout(function() { fitSubtree(layoutTrees[currentTab]); }, 220);
 }
 
-function sbRefresh() {
-  if (sbCurrentPath) sbBrowse(sbCurrentPath, true);
-}
-
-// Auto-poll every 2.5s to catch new files in the directory being viewed
-var sbPollInterval = setInterval(function() {
-  var sb = document.getElementById('sidebar');
-  if (!sbCurrentPath) return;
-  if (sb.classList.contains('collapsed')) return;
-  if (document.hidden) return;
-  sbBrowse(sbCurrentPath, true);
-}, 2500);
-window.addEventListener('beforeunload', function() { clearInterval(sbPollInterval); });
+function sbRefresh() { if (sbCurrentPath) sbBrowse(sbCurrentPath, true); }
 
 function sbBrowse(p, silent) {
   if (!p) return;
-  // Push to history (skip if silent refresh or navigating via back/forward)
   if (!silent && !sbNavigating) {
     if (sbHistoryIdx < sbHistory.length - 1) sbHistory = sbHistory.slice(0, sbHistoryIdx + 1);
     sbHistory.push(p);
@@ -2581,134 +2528,79 @@ function sbBrowse(p, silent) {
   sbNavigating = false;
   sbUpdateNavButtons();
   sbCurrentPath = p;
-  // Update path input
   var pathInput = document.getElementById('sb-path-input');
   if (pathInput) pathInput.value = p;
-  // Drives special case
-  if (p === 'Drives') {
-    document.getElementById('sb-crumb').innerHTML = '<span style="color:var(--muted)">&#x1F4BF; Select a drive</span>';
-    var listEl = document.getElementById('sb-list');
-    fetch('/api/fs?path=Drives')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var html = '';
-        (data.items || []).forEach(function(d) {
-          html += '<div class="sb-row" data-sb-dir="' + esc(d.path || d.name) + '"><span class="sb-icon">&#x1F4BF;</span><span class="sb-name">' + esc(d.name) + '</span></div>';
-        });
-        listEl.innerHTML = html || '<div class="sb-empty">No drives found</div>';
-        listEl.dataset.sig = '';
-      });
-    return;
-  }
-  // Breadcrumb — normalize path: collapse multiple backslash to single
-  var BS = String.fromCharCode(92);
-  p = p.replace(new RegExp(BS + BS + '+', 'g'), BS);
-  sbCurrentPath = p;
-  var parts = p.split(/[\/\\]/).filter(Boolean);
-  var crumbHtml = '';
-  var accum = '';
-  parts.forEach(function(part, i) {
-    if (i === 0 && /^[A-Za-z]:$/.test(part)) accum = part + BS;
-    else accum = accum + (accum.endsWith(BS) ? '' : BS) + part;
-    if (i > 0) crumbHtml += '<span class="sep">›</span>';
-    crumbHtml += '<span data-sb-crumb="' + esc(accum) + '">' + esc(part) + '</span>';
-  });
-  document.getElementById('sb-crumb').innerHTML = crumbHtml;
-
+  
   var listEl = document.getElementById('sb-list');
-  var prevScroll = listEl.scrollTop;
   fetch('/api/fs?files=1&path=' + encodeURIComponent(p))
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.error) { listEl.innerHTML = '<div class="sb-empty">' + esc(data.error) + '</div>'; return; }
-      // Silent refresh: skip re-render if list unchanged (avoid flicker)
-      var sig = JSON.stringify((data.items || []).map(function(i) { return i.type + ':' + i.name + ':' + (i.size||0); }));
-      if (silent && sig === listEl.dataset.sig) return;
-      listEl.dataset.sig = sig;
       renderSbList(data.items || []);
-      if (silent) listEl.scrollTop = prevScroll;
     });
 }
 
 function sbUpdateNavButtons() {
-  var backBtn = document.getElementById('sb-back');
-  var fwdBtn = document.getElementById('sb-fwd');
-  if (backBtn) backBtn.disabled = sbHistoryIdx <= 0;
-  if (fwdBtn) fwdBtn.disabled = sbHistoryIdx >= sbHistory.length - 1;
+  var b = document.getElementById('sb-back'), f = document.getElementById('sb-fwd');
+  if (b) b.disabled = sbHistoryIdx <= 0;
+  if (f) f.disabled = sbHistoryIdx >= sbHistory.length - 1;
 }
-
-function sbGoBack() {
-  if (sbHistoryIdx <= 0) return;
-  sbHistoryIdx--;
-  sbNavigating = true;
-  sbBrowse(sbHistory[sbHistoryIdx]);
-}
-
-function sbGoForward() {
-  if (sbHistoryIdx >= sbHistory.length - 1) return;
-  sbHistoryIdx++;
-  sbNavigating = true;
-  sbBrowse(sbHistory[sbHistoryIdx]);
-}
-
-function sbGoHome() {
-  if (!activeSid || !state[activeSid]) { toast('Click a terminal first'); return; }
-  sbBrowse(state[activeSid].cwd);
-}
-
-function fmtSize(b) {
-  if (b < 1024) return b + ' B';
-  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
-  if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
-  return (b/1024/1024/1024).toFixed(1) + ' GB';
-}
+function sbGoBack() { if (sbHistoryIdx > 0) { sbHistoryIdx--; sbNavigating = true; sbBrowse(sbHistory[sbHistoryIdx]); } }
+function sbGoForward() { if (sbHistoryIdx < sbHistory.length - 1) { sbHistoryIdx++; sbNavigating = true; sbBrowse(sbHistory[sbHistoryIdx]); } }
+function sbGoHome() { if (activeSid && state[activeSid]) sbBrowse(state[activeSid].cwd); }
 
 function renderSbList(items) {
   var list = document.getElementById('sb-list');
   if (!items.length) { list.innerHTML = '<div class="sb-empty">Empty folder</div>'; return; }
-  // Up row
   var html = '';
   var upPath = sbCurrentPath.replace(/[\/][^\/]+[\/]?$/, '') || sbCurrentPath;
   if (upPath && upPath !== sbCurrentPath) {
-    html += '<div class="sb-row" data-sb-up="' + esc(upPath) + '"><span class="sb-icon">&#x2B06;</span><span class="sb-name">.. (up one level)</span></div>';
-  } else if (sbCurrentPath && /^[A-Za-z]:[\\\/]?$/.test(sbCurrentPath)) {
-    // At drive root → show button back to Drives list
-    html += '<div class="sb-row" data-sb-dir="Drives"><span class="sb-icon">&#x1F4BF;</span><span class="sb-name">.. (all drives)</span></div>';
+    html += '<div class="sb-row" data-sb-up="' + esc(upPath) + '"><span class="sb-icon">&#x2B06;</span><span class="sb-name">.. (up)</span></div>';
   }
   var selMap = (activeSid && sbSelected[activeSid]) || {};
   items.forEach(function(it) {
     if (it.type === 'dir') {
-      html += '<div class="sb-row" data-sb-dir="' + esc(it.path) + '">' +
-                '<span class="sb-icon">&#x1F4C1;</span>' +
-                '<span class="sb-name">' + esc(it.name) + (it.isProject?' &#x2B50;':'') + '</span>' +
-              '</div>';
+      html += '<div class="sb-row" data-sb-dir="' + esc(it.path) + '"><span class="sb-icon">&#x1F4C1;</span><span class="sb-name">' + esc(it.name) + '</span></div>';
     } else {
-      var key = it.path;
-      var checked = selMap[key] ? 'checked' : '';
-      html += '<div class="sb-row ' + (checked?'checked':'') + '" data-sb-file="' + esc(it.path) + '" data-sb-name="' + esc(it.name) + '">' +
+      var checked = selMap[it.path] ? 'checked' : '';
+      html += '<div class="sb-row ' + (checked?'checked':'') + '" data-sb-file="' + esc(it.path) + '">' +
                 '<input type="checkbox" ' + checked + ' data-sb-check="' + esc(it.path) + '" data-sb-name="' + esc(it.name) + '">' +
-                '<span class="sb-icon">&#x1F4C4;</span>' +
-                '<span class="sb-name">' + esc(it.name) + '</span>' +
-                '<span class="sb-size">' + fmtSize(it.size || 0) + '</span>' +
-              '</div>';
+                '<span class="sb-icon">&#x1F4C4;</span><span class="sb-name">' + esc(it.name) + '</span></div>';
     }
   });
   list.innerHTML = html;
 }
 
-function renderSbSelected() {
-  var wrap = document.getElementById('sb-selected');
-  var box = document.getElementById('sb-sel-items');
-  if (!activeSid || !sbSelected[activeSid] || !Object.keys(sbSelected[activeSid]).length) {
-    wrap.style.display = 'none'; box.innerHTML = ''; return;
+// Click delegation cho sidebar
+document.getElementById('sidebar').addEventListener('click', function(e) {
+  var check = e.target.closest('[data-sb-check]');
+  if (check) {
+    sbToggleFile(check.dataset.sbCheck, check.dataset.sbName, check.checked);
+    e.stopPropagation(); return;
   }
-  wrap.style.display = 'block';
-  box.innerHTML = Object.keys(sbSelected[activeSid]).map(function(k) {
-    return '<div class="sb-sel-item">' + esc(sbSelected[activeSid][k].token) + '</div>';
-  }).join('');
+  var fileRow = e.target.closest('[data-sb-file]');
+  if (fileRow) {
+    var cb = fileRow.querySelector('input[type="checkbox"]');
+    if (cb) { cb.checked = !cb.checked; sbToggleFile(cb.dataset.sbCheck, cb.dataset.sbName, cb.checked); }
+    return;
+  }
+  var dir = e.target.closest('[data-sb-dir]'); if (dir) { sbBrowse(dir.dataset.sbDir); return; }
+  var up  = e.target.closest('[data-sb-up]'); if (up)  { sbBrowse(up.dataset.sbUp); return; }
+});
+
+function sbToggleFile(filePath, fileName, checked) {
+  if (!activeSid) { toast('Click a terminal first'); return; }
+  var s = state[activeSid], p = panes[activeSid];
+  if (!s || !p || p.ws.readyState !== 1) return;
+  sbSelected[activeSid] = sbSelected[activeSid] || {};
+  var rel = relOrAbs(filePath, s.cwd);
+  var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
+  var token = '@' + ref + ' ';
+  if (checked) { sbSelected[activeSid][filePath] = true; p.ws.send(token); } 
+  else { delete sbSelected[activeSid][filePath]; p.ws.send('\x7f'.repeat(token.length)); }
+  sbRefresh();
 }
 
-// Compute relative path if file is within session cwd, otherwise use absolute
 function relOrAbs(filePath, sessionCwd) {
   var BS = String.fromCharCode(92);
   var fp = filePath.split(BS).join('/').toLowerCase();
@@ -2718,66 +2610,16 @@ function relOrAbs(filePath, sessionCwd) {
   return filePath;
 }
 
-function sbToggleFile(filePath, fileName, checked) {
-  if (!activeSid) { toast('Click a terminal first'); return; }
-  var s = state[activeSid];
-  var p = panes[activeSid];
-  if (!s || !p || p.ws.readyState !== 1) { toast('Session not ready'); return; }
-  sbSelected[activeSid] = sbSelected[activeSid] || {};
-  sbInsertLen[activeSid] = sbInsertLen[activeSid] || {};
-  var rel = relOrAbs(filePath, s.cwd);
-  // Neu path co space, quote
-  var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
-  var token = '@' + ref + ' ';
-  if (checked) {
-    sbSelected[activeSid][filePath] = { token: token };
-    sbInsertLen[activeSid][filePath] = token.length;
-    p.ws.send(token);
-  } else {
-    // Send backspace x N to delete (DEL char = 0x7F — Claude TUI uses DEL)
-    var n = sbInsertLen[activeSid][filePath] || token.length;
-    var bs = '';
-    for (var i = 0; i < n; i++) bs += '\x7f';
-    p.ws.send(bs);
-    delete sbSelected[activeSid][filePath];
-    delete sbInsertLen[activeSid][filePath];
+function setActiveSession(sid) {
+  if (!sid || !state[sid]) return;
+  activeSid = sid;
+  document.querySelectorAll('.pane').forEach(function(el) { el.classList.remove('active-pane'); });
+  var p = panes[sid];
+  if (p) {
+    p.el.classList.add('active-pane');
+    sbBrowse(state[sid].cwd);
   }
-  renderSbSelected();
 }
-
-// Click delegation cho sidebar
-document.getElementById('sidebar').addEventListener('click', function(e) {
-  var check = e.target.closest('[data-sb-check]');
-  if (check) {
-    sbToggleFile(check.dataset.sbCheck, check.dataset.sbName, check.checked);
-    var row = check.closest('.sb-row');
-    if (row) row.classList.toggle('checked', check.checked);
-    e.stopPropagation();
-    return;
-  }
-  var fileRow = e.target.closest('[data-sb-file]');
-  if (fileRow) {
-    // Click toan row = toggle checkbox
-    var cb = fileRow.querySelector('input[type="checkbox"]');
-    if (cb) { cb.checked = !cb.checked; sbToggleFile(cb.dataset.sbCheck, cb.dataset.sbName, cb.checked); fileRow.classList.toggle('checked', cb.checked); }
-    return;
-  }
-  var dir = e.target.closest('[data-sb-dir]');
-  if (dir) { sbBrowse(dir.dataset.sbDir); return; }
-  var up  = e.target.closest('[data-sb-up]');
-  if (up)  { sbBrowse(up.dataset.sbUp); return; }
-  var crumb = e.target.closest('[data-sb-crumb]');
-  if (crumb) { sbBrowse(crumb.dataset.sbCrumb); return; }
-});
-
-// Click on pane → set active
-document.getElementById('canvas').addEventListener('mousedown', function(e) {
-  var pane = e.target.closest('.pane');
-  if (pane) {
-    var sid = pane.id.replace(/^pane-/, '');
-    if (sid !== activeSid) setActiveSession(sid);
-  }
-}, true);
 
 // Global paste → forward clipboard to active session PTY (text + image)
 document.addEventListener('paste', function(e) {
@@ -2787,7 +2629,6 @@ document.addEventListener('paste', function(e) {
   var p = panes[activeSid];
   if (!p || p.ws.readyState !== 1) return;
 
-  // Check image in clipboard
   var items = (e.clipboardData || window.clipboardData).items;
   if (items) {
     for (var i = 0; i < items.length; i++) {
@@ -2811,7 +2652,6 @@ document.addEventListener('paste', function(e) {
     }
   }
 
-  // Text paste
   var text = (e.clipboardData || window.clipboardData).getData('text');
   if (!text) return;
   var CR = String.fromCharCode(13), LF = String.fromCharCode(10);
@@ -2820,305 +2660,11 @@ document.addEventListener('paste', function(e) {
   e.preventDefault();
 });
 
-// ── Context Menu (right-click trong sidebar) ──────────────────────
-var ctxTarget = null; // { path, name, type }
-
-function openCtxMenu(x, y, items) {
-  var menu = document.getElementById('ctx-menu');
-  menu.innerHTML = items.map(function(it) {
-    if (it === 'sep') return '<div class="ctx-sep"></div>';
-    return '<div class="ctx-item ' + (it.danger?'danger':'') + '" data-ctx="' + it.act + '">' +
-           '<span class="ctx-icon">' + it.icon + '</span>' + esc(it.label) + '</div>';
-  }).join('');
-  menu.classList.add('show');
-  var mw = menu.offsetWidth, mh = menu.offsetHeight;
-  var left = Math.min(x, window.innerWidth - mw - 8);
-  var top  = Math.min(y, window.innerHeight - mh - 8);
-  menu.style.left = left + 'px';
-  menu.style.top  = top + 'px';
-}
-function closeCtxMenu() { document.getElementById('ctx-menu').classList.remove('show'); }
-
-// Right-click tren sidebar row
-document.getElementById('sidebar').addEventListener('contextmenu', function(e) {
-  var row = e.target.closest('.sb-row');
-  if (!row) {
-    // Right-click tren vung trong → menu "New file/folder" tai sbCurrentPath
-    if (!sbCurrentPath) return;
-    e.preventDefault();
-    ctxTarget = { path: sbCurrentPath, name: '', type: 'dir', isCurrent: true };
-    openCtxMenu(e.clientX, e.clientY, [
-      { act:'new-file',   icon:'&#x1F4C4;', label:'New file' },
-      { act:'new-folder', icon:'&#x1F4C1;', label:'New folder' },
-    ]);
-    return;
-  }
-  var filePath = row.dataset.sbFile || row.dataset.sbDir;
-  if (!filePath) return;
-  e.preventDefault();
-  var isFile = !!row.dataset.sbFile;
-  var nameEl = row.querySelector('.sb-name');
-  ctxTarget = { path: filePath, name: (nameEl ? nameEl.textContent.trim() : ''), type: isFile ? 'file' : 'dir', row: row };
-
-  var items;
-  if (isFile) {
-    items = [
-      { act:'open',       icon:'&#x1F4C2;', label:'Open (default app)' },
-      { act:'reveal',     icon:'&#x1F4CD;', label:'Reveal in Explorer' },
-      'sep',
-      { act:'attach',     icon:'&#x1F4CE;', label:'Attach to terminal' },
-      { act:'copy-path',  icon:'&#x1F4CB;', label:'Copy path' },
-      'sep',
-      { act:'rename',     icon:'&#x270F;',  label:'Rename' },
-      { act:'duplicate',  icon:'&#x1F4C4;', label:'Duplicate' },
-      { act:'delete',     icon:'&#x1F5D1;', label:'Delete (Recycle Bin)', danger:true },
-    ];
-  } else {
-    items = [
-      { act:'open',       icon:'&#x1F4C2;', label:'Open' },
-      { act:'reveal-dir', icon:'&#x1F4CD;', label:'Open in Explorer' },
-      { act:'vscode',     icon:'&#x1F4BB;', label:'Open in VSCode' },
-      'sep',
-      { act:'new-session',icon:'&#x2795;',  label:'New Session here' },
-      { act:'new-file',   icon:'&#x1F4C4;', label:'New file' },
-      { act:'new-folder', icon:'&#x1F4C1;', label:'New folder' },
-      'sep',
-      { act:'copy-path',  icon:'&#x1F4CB;', label:'Copy path' },
-      { act:'rename',     icon:'&#x270F;',  label:'Rename' },
-      { act:'duplicate',  icon:'&#x1F4C4;', label:'Duplicate' },
-      { act:'delete',     icon:'&#x1F5D1;', label:'Delete (Recycle Bin)', danger:true },
-    ];
-  }
-  openCtxMenu(e.clientX, e.clientY, items);
-});
-
-// Click outside to close menu
-document.addEventListener('mousedown', function(e) {
-  var menu = document.getElementById('ctx-menu');
-  if (!menu.classList.contains('show')) return;
-  if (menu.contains(e.target)) return;
-  closeCtxMenu();
-});
-
-// Click item trong menu
-document.getElementById('ctx-menu').addEventListener('click', function(e) {
-  var it = e.target.closest('[data-ctx]');
-  if (!it || !ctxTarget) return;
-  var act = it.dataset.ctx;
-  closeCtxMenu();
-  handleCtxAction(act);
-});
-
-function handleCtxAction(act) {
-  var t = ctxTarget;
-  if (!t) return;
-
-  if (act === 'open') {
-    if (t.type === 'file') {
-      fetch('/api/file-open', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
-        .then(function(r){return r.json();}).then(function(j){ if(!j.ok) toast('Error: '+j.error); });
-    } else {
-      sbBrowse(t.path);
-    }
-    return;
-  }
-  if (act === 'reveal') {
-    fetch('/api/file-reveal', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) });
-    return;
-  }
-  if (act === 'reveal-dir') {
-    fetch('/api/open', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path, action:'explorer' }) });
-    return;
-  }
-  if (act === 'vscode') {
-    fetch('/api/open', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path, action:'vscode' }) });
-    return;
-  }
-  if (act === 'attach') {
-    var cb = t.row && t.row.querySelector('input[type="checkbox"]');
-    if (cb) { cb.checked = !cb.checked; sbToggleFile(t.path, t.name, cb.checked); t.row.classList.toggle('checked', cb.checked); }
-    return;
-  }
-  if (act === 'copy-path') {
-    navigator.clipboard.writeText(t.path).then(function(){ toast('Path copied'); });
-    return;
-  }
-  if (act === 'rename') {
-    startInlineFileRename(t);
-    return;
-  }
-  if (act === 'duplicate') {
-    fetch('/api/file-duplicate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
-      .then(function(r){return r.json();}).then(function(j){
-        if (j.ok) { toast('Duplicated'); sbRefresh(); }
-        else toast('Error: '+j.error);
-      });
-    return;
-  }
-  if (act === 'delete') {
-    if (!confirm('Delete "' + t.name + '" to Recycle Bin?')) return;
-    fetch('/api/file-delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path: t.path }) })
-      .then(function(r){return r.json();}).then(function(j){
-        if (j.ok) { toast('Moved to Recycle Bin'); sbRefresh(); }
-        else toast('Error: '+j.error);
-      });
-    return;
-  }
-  if (act === 'new-file' || act === 'new-folder') {
-    var parent = t.isCurrent ? sbCurrentPath : (t.type === 'dir' ? t.path : sbCurrentPath);
-    var name = prompt(act === 'new-file' ? 'New file name:' : 'New folder name:', act === 'new-file' ? 'untitled.txt' : 'new-folder');
-    if (!name) return;
-    fetch('/api/file-new', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ parent: parent, name: name, type: act === 'new-file' ? 'file' : 'dir' }),
-    }).then(function(r){return r.json();}).then(function(j){
-      if (j.ok) { toast('Created ' + name); sbRefresh(); }
-      else toast('Error: '+j.error);
-    });
-    return;
-  }
-  if (act === 'new-session') {
-    fetch('/api/sessions', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ cwd: t.path, autoAccept: document.getElementById('chk-auto').checked }),
-    }).then(function(){ toast('Created session: ' + t.name); });
-    return;
-  }
-}
-
-function startInlineFileRename(t) {
-  if (!t.row) return;
-  var nameEl = t.row.querySelector('.sb-name');
-  if (!nameEl) return;
-  var oldHtml = nameEl.innerHTML;
-  var input = document.createElement('input');
-  input.type = 'text';
-  input.className = 'sb-rename';
-  input.value = t.name;
-  nameEl.replaceWith(input);
-  input.focus();
-  input.select();
-  var done = false;
-  function cleanup(newSpan) {
-    if (done) return; done = true;
-    input.replaceWith(newSpan);
-  }
-  function save() {
-    var newName = input.value.trim();
-    if (!newName || newName === t.name) {
-      var span = document.createElement('span');
-      span.className = 'sb-name'; span.innerHTML = oldHtml;
-      cleanup(span); return;
-    }
-    fetch('/api/file-rename', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ path: t.path, newName: newName }),
-    }).then(function(r){return r.json();}).then(function(j){
-      if (j.ok) { toast('Renamed'); sbRefresh(); }
-      else { toast('Error: '+j.error); var span = document.createElement('span'); span.className='sb-name'; span.innerHTML=oldHtml; cleanup(span); }
-    });
-  }
-  input.addEventListener('keydown', function(ev) {
-    if (ev.key === 'Enter') { ev.preventDefault(); save(); }
-    else if (ev.key === 'Escape') {
-      var span = document.createElement('span');
-      span.className = 'sb-name'; span.innerHTML = oldHtml;
-      cleanup(span);
-    }
-  });
-  input.addEventListener('blur', save);
-}
-
-// ── Folder Popup ──────────────────────────────────────────────────
-function showFolderPopup(sid, anchorBtn) {
-  var s = state[sid];
-  if (!s) return;
-  var pop = document.getElementById('folder-pop');
-  var fullPath = s.cwd || '';
-  var BS = String.fromCharCode(92);
-  // Breadcrumb: split path by \ or /, skip empty
-  var parts = fullPath.split(/[\/\\]/).filter(Boolean);
-  var crumbHtml = '';
-  var accum = '';
-  parts.forEach(function(part, i) {
-    if (i === 0 && /^[A-Za-z]:$/.test(part)) {
-      accum = part + BS;
-    } else {
-      accum = accum + (accum.endsWith(BS) ? '' : BS) + part;
-    }
-    if (i > 0) crumbHtml += '<span class="sep">›</span>';
-    crumbHtml += '<span data-crumb="' + esc(accum) + '" title="Open in Explorer">' + esc(part) + '</span>';
-  });
-  pop.innerHTML =
-    '<div class="fp-path">' + esc(fullPath) + '</div>' +
-    '<div class="fp-crumb">' + crumbHtml + '</div>' +
-    '<div class="fp-acts">' +
-      '<button data-act="explorer">&#x1F4C2; Explorer</button>' +
-      '<button data-act="copy">&#x1F4CB; Copy path</button>' +
-      '<button data-act="vscode">&#x1F4BB; VSCode</button>' +
-      '<button data-act="cmd">&#x1F5A5; CMD</button>' +
-    '</div>';
-  pop.dataset.path = fullPath;
-  // Vi tri: ngay duoi nut anchor
-  var r = anchorBtn.getBoundingClientRect();
-  pop.classList.add('show');
-  // Recalculate after show to get actual dimensions
-  var pw = pop.offsetWidth, ph = pop.offsetHeight;
-  var left = Math.min(r.left, window.innerWidth - pw - 12);
-  var top  = r.bottom + 6;
-  if (top + ph > window.innerHeight - 12) top = Math.max(12, r.top - ph - 6);
-  pop.style.left = Math.max(12, left) + 'px';
-  pop.style.top  = top + 'px';
-}
-
-function hideFolderPopup() {
-  document.getElementById('folder-pop').classList.remove('show');
-}
-
-document.getElementById('folder-pop').addEventListener('click', function(e) {
-  var pop = document.getElementById('folder-pop');
-  var fullPath = pop.dataset.path;
-  var crumb = e.target.closest('[data-crumb]');
-  if (crumb) {
-    fetch('/api/open', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ path: crumb.dataset.crumb, action: 'explorer' }),
-    }).then(function(){ toast('Opened in Explorer'); });
-    return;
-  }
-  var act = e.target.closest('[data-act]');
-  if (!act) return;
-  var action = act.dataset.act;
-  if (action === 'copy') {
-    navigator.clipboard.writeText(fullPath).then(function(){ toast('Path copied'); });
-    hideFolderPopup();
-    return;
-  }
-  fetch('/api/open', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json' },
-    body: JSON.stringify({ path: fullPath, action: action }),
-  }).then(function(r){ return r.json(); }).then(function(j){
-    if (j.ok) toast('Opened in ' + action);
-    else toast('Error: ' + (j.error || 'unknown'));
-  });
-  hideFolderPopup();
-});
-
-// Click outside to close popup
-document.addEventListener('mousedown', function(e) {
-  var pop = document.getElementById('folder-pop');
-  if (!pop.classList.contains('show')) return;
-  if (pop.contains(e.target)) return;
-  if (e.target.closest('[data-folder]')) return;
-  hideFolderPopup();
-});
-
 // ── Toast ─────────────────────────────────────────────────────────
 var toastTimer;
 function toast(msg) {
   var t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
@@ -3128,132 +2674,12 @@ function esc(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ── Sidebar Resize Handle ────────────────────────────────────────
-(function() {
-  var handle = document.getElementById('sb-resize-handle');
-  var sidebar = document.getElementById('sidebar');
-  var startX, startW;
-
-  handle.addEventListener('mousedown', function(e) {
-    e.preventDefault();
-    startX = e.clientX;
-    startW = sidebar.offsetWidth;
-    sidebar.classList.add('resizing');
-    handle.classList.add('dragging');
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  });
-
-  function onMove(e) {
-    var newW = startW + (e.clientX - startX);
-    newW = Math.max(180, Math.min(newW, window.innerWidth * 0.6));
-    sidebar.style.width = newW + 'px';
-  }
-
-  function onUp() {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    sidebar.classList.remove('resizing');
-    handle.classList.remove('dragging');
-    // Save width to localStorage
-    localStorage.setItem('sb-width', sidebar.offsetWidth);
-    // Re-fit terminals
-    fitSubtree(layoutTrees[currentTab]);
-  }
-
-  // Restore saved width
-  var saved = localStorage.getItem('sb-width');
-  if (saved) sidebar.style.width = saved + 'px';
-})();
-
-// ── Drag & Drop tu Windows Explorer ──────────────────────────────
-(function() {
-  var sbOverlay = document.getElementById('sb-drop-overlay');
-  var canvasOverlay = document.getElementById('canvas-drop-overlay');
-  var sidebar = document.getElementById('sidebar');
-  var canvas = document.getElementById('canvas');
-  var sbCounter = 0, cvCounter = 0;
-
-  function extractPaths(e) {
-    // Electron/NW.js: e.dataTransfer.files co .path
-    // Standard browser: only has .name, no full path
-    // Fallback: text/uri-list hoac text/plain
-    var paths = [];
-    var files = e.dataTransfer.files;
-    if (files && files.length) {
-      for (var i = 0; i < files.length; i++) {
-        // webkitRelativePath hoac path (Electron)
-        var fp = files[i].path || files[i].name;
-        if (fp) paths.push(fp);
-      }
-    }
-    // Fallback: text data (co the la path khi drag tu Explorer)
-    if (!paths.length) {
-      var txt = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list') || '';
-      if (txt) {
-        txt.split(String.fromCharCode(10)).forEach(function(line) {
-          line = line.trim().replace(/^file:[/][/][/]/, '').split('/').join(String.fromCharCode(92));
-          if (line) paths.push(decodeURIComponent(line));
-        });
-      }
-    }
-    return paths;
-  }
-
-  // ── Sidebar drop: send @path to terminal (same as canvas drop) ──
-  sidebar.addEventListener('dragenter', function(e) { e.preventDefault(); sbCounter++; sbOverlay.classList.add('show'); });
-  sidebar.addEventListener('dragleave', function(e) { sbCounter--; if (sbCounter <= 0) { sbCounter = 0; sbOverlay.classList.remove('show'); } });
-  sidebar.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
-  sidebar.addEventListener('drop', function(e) {
-    e.preventDefault(); sbCounter = 0; sbOverlay.classList.remove('show');
-    sendDroppedFiles(e, activeSid);
-  });
-
-  // ── Common function: send file paths to terminal ──
-  function sendDroppedFiles(e, fallbackSid) {
-    var paths = extractPaths(e);
-    if (!paths.length) { toast('Cannot read file path'); return; }
-    var targetPane = e.target.closest('.pane');
-    var sid = targetPane ? targetPane.id.replace(/^pane-/, '') : fallbackSid;
-    if (!sid) { toast('Click a terminal first'); return; }
-    var p = panes[sid];
-    if (!p || p.ws.readyState !== 1) { toast('Session not ready'); return; }
-    paths.forEach(function(fp) {
-      var s = state[sid];
-      var rel = relOrAbs(fp, s ? s.cwd : '');
-      var ref = /\s/.test(rel) ? '"' + rel + '"' : rel;
-      p.ws.send('@' + ref + ' ');
-    });
-    toast('Sent ' + paths.length + ' file(s) to terminal');
-  }
-
-  // ── Canvas drop: insert @path into terminal ──
-  canvas.addEventListener('dragenter', function(e) { e.preventDefault(); cvCounter++; canvasOverlay.classList.add('show'); });
-  canvas.addEventListener('dragleave', function(e) { cvCounter--; if (cvCounter <= 0) { cvCounter = 0; canvasOverlay.classList.remove('show'); } });
-  canvas.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
-  canvas.addEventListener('drop', function(e) {
-    e.preventDefault(); cvCounter = 0; canvasOverlay.classList.remove('show');
-    sendDroppedFiles(e, activeSid);
-  });
-  // Safety: hide overlays when drag ends (browser sometimes misses dragleave)
-  document.addEventListener('dragend', function() { sbCounter = 0; cvCounter = 0; sbOverlay.classList.remove('show'); canvasOverlay.classList.remove('show'); });
-  document.addEventListener('drop', function(e) { e.preventDefault(); sbCounter = 0; cvCounter = 0; sbOverlay.classList.remove('show'); canvasOverlay.classList.remove('show'); });
-  document.addEventListener('dragover', function(e) { e.preventDefault(); });
-})();
-
-// ── Keyboard shortcut: Alt+Left/Right cho sidebar nav ────────────
-document.addEventListener('keydown', function(e) {
-  if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); sbGoBack(); }
-  if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); sbGoForward(); }
-});
-
 // Apply saved theme on load
 applyTheme(currentTheme);
 
 document.getElementById('btn-font-size').textContent = termFontSize + 'px';
 document.addEventListener('keydown', function(kbEv) {
   var tag = document.activeElement ? document.activeElement.tagName : '';
-  // Let plain text inputs handle their own keys (but not xterm textareas — those get ours)
   if ((tag === 'INPUT' || tag === 'TEXTAREA') && !document.activeElement.closest('.xterm')) return;
 
   if (kbEv.ctrlKey && kbEv.shiftKey && kbEv.key === 'N') {
@@ -3286,90 +2712,7 @@ document.addEventListener('keydown', function(kbEv) {
   }
 });
 
-document.getElementById('inp-filter').addEventListener('input', function() {
-  sessionFilter = this.value.trim().toLowerCase();
-  rebuildCanvas();
-});
-document.getElementById('inp-filter').addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') { this.value = ''; sessionFilter = ''; rebuildCanvas(); this.blur(); }
-});
-document.getElementById('inp-broadcast').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') {
-    sendBroadcast(this.value.trim());
-    this.value = '';
-    document.getElementById('broadcast-bar').style.display = 'none';
-  } else if (e.key === 'Escape') {
-    this.value = '';
-    document.getElementById('broadcast-bar').style.display = 'none';
-  }
-});
-document.getElementById('canvas').addEventListener('keydown', function(e) {
-  var inp = e.target;
-  if (!inp || inp.id.indexOf('search-inp-') !== 0) return;
-  var sid = inp.id.replace('search-inp-', '');
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); searchNext(sid); }
-  else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); searchPrev(sid); }
-  else if (e.key === 'Escape') { e.preventDefault(); closeSearchBar(sid); }
-  else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
-    e.preventDefault();
-    if (!searchCaseSensitive[sid]) searchCaseSensitive[sid] = false;
-    searchCaseSensitive[sid] = !searchCaseSensitive[sid];
-    var btn = document.getElementById('search-case-' + sid);
-    if (btn) btn.classList.toggle('active', searchCaseSensitive[sid]);
-    runSearch(sid);
-  }
-});
-document.getElementById('canvas').addEventListener('input', function(e) {
-  var inp = e.target;
-  if (!inp || inp.id.indexOf('search-inp-') !== 0) return;
-  var sid = inp.id.replace('search-inp-', '');
-  runSearch(sid);
-});
-document.addEventListener('keydown', function(e) {
-  if (!dragState.active) return;
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.pane.drag-source').forEach(function(p) { p.classList.remove('drag-source'); });
-    document.querySelectorAll('.pane.drag-target').forEach(function(p) { p.classList.remove('drag-target'); });
-    document.body.classList.remove('is-dragging');
-    dragState.active = false;
-    dragState.fromSid = null;
-  }
-});
-document.addEventListener('mousemove', function(e) {
-  if (!dragState.active) return;
-  document.querySelectorAll('.pane.drag-target').forEach(function(p) { p.classList.remove('drag-target'); });
-  var el = document.elementFromPoint(e.clientX, e.clientY);
-  if (!el) return;
-  var paneEl = el.closest('.pane');
-  if (!paneEl) return;
-  var toSid = paneEl.id.replace('pane-', '');
-  if (toSid !== dragState.fromSid) paneEl.classList.add('drag-target');
-});
-
-document.addEventListener('mouseup', function(e) {
-  if (!dragState.active) return;
-  document.querySelectorAll('.pane.drag-source').forEach(function(p) { p.classList.remove('drag-source'); });
-  document.querySelectorAll('.pane.drag-target').forEach(function(p) { p.classList.remove('drag-target'); });
-  var el = document.elementFromPoint(e.clientX, e.clientY);
-  var toSid = null;
-  if (el) {
-    var paneEl = el.closest('.pane');
-    if (paneEl) toSid = paneEl.id.replace('pane-', '');
-  }
-  var fromSid = dragState.fromSid;
-  dragState.active = false;
-  dragState.fromSid = null;
-  document.body.classList.remove('is-dragging');
-  if (!toSid || toSid === fromSid) return;
-  var tree = layoutTrees[currentTab];
-  if (!tree) return;
-  swapLeaves(tree, fromSid, toSid);
-  saveLayoutTree(currentTab, tree);
-  rebuildCanvas();
-});
-
 updateNotifyBtn();
-updateSidebarBtn();
 connectCtrl();
 </script>
 </body>
