@@ -473,6 +473,28 @@ app.post('/api/file-delete', (req, res) => {
   });
 });
 
+
+app.post('/api/files-delete', (req, res) => {
+  const paths = Array.isArray(req.body.paths) ? req.body.paths.map(p => String(p || '').trim()).filter(Boolean) : [];
+  if (!paths.length) return res.status(400).json({ error: 'no paths' });
+  const unique = [...new Set(paths)];
+  const invalid = unique.find(p => !fs.existsSync(p));
+  if (invalid) return res.status(400).json({ error: 'invalid path: ' + invalid });
+
+  const errors = [];
+  let pending = unique.length;
+  unique.forEach(p => {
+    platform.moveToTrash(p, (err) => {
+      if (err) errors.push({ path: p, error: String(err) });
+      pending--;
+      if (pending === 0) {
+        if (errors.length) return res.status(500).json({ error: 'some files failed', errors });
+        res.json({ ok: true, count: unique.length });
+      }
+    });
+  });
+});
+
 // Rename
 app.post('/api/file-rename', (req, res) => {
   const p = String(req.body.path || '').trim();
@@ -529,6 +551,55 @@ app.post('/api/file-new', (req, res) => {
     else fs.writeFileSync(target, '');
     res.json({ ok: true, path: target });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+function safeUploadName(name) {
+  const leaf = path.basename(String(name || 'dropped-file').replace(/[\\/]+/g, path.sep)).trim() || 'dropped-file';
+  return leaf.replace(/[<>:"/\\|?*\r\n\0]/g, '_');
+}
+
+function uniquePath(dir, name) {
+  const parsed = path.parse(name);
+  let candidate = path.join(dir, name);
+  for (let i = 1; fs.existsSync(candidate); i++) {
+    candidate = path.join(dir, `${parsed.name} (${i})${parsed.ext}`);
+  }
+  return candidate;
+}
+
+// Save dropped browser files. mode="folder" writes into target dir;
+// mode="temp" writes into OS temp so the terminal can receive @path tokens.
+app.post('/api/drop-files', (req, res) => {
+  const mode = req.body.mode === 'folder' ? 'folder' : 'temp';
+  const files = Array.isArray(req.body.files) ? req.body.files : [];
+  if (!files.length) return res.status(400).json({ error: 'no files' });
+
+  let dir;
+  if (mode === 'folder') {
+    dir = path.resolve(String(req.body.dir || ''));
+    if (!dir || !fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+      return res.status(400).json({ error: 'invalid target folder' });
+    }
+  } else {
+    dir = path.join(os.tmpdir(), 'claude-hub-drops');
+    try { fs.mkdirSync(dir, { recursive: true }); } catch(_) {}
+  }
+
+  const saved = [];
+  try {
+    for (const file of files) {
+      const match = String(file.data || '').match(/^data:([^;,]+)?(;base64)?,(.*)$/);
+      if (!match || !match[2]) return res.status(400).json({ error: 'invalid file data' });
+      const name = safeUploadName(file.name);
+      const target = uniquePath(dir, name);
+      fs.writeFileSync(target, Buffer.from(match[3], 'base64'));
+      saved.push({ path: target, name: path.basename(target) });
+    }
+    res.json({ ok: true, files: saved });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Save pasted image from clipboard to temp file, return path
